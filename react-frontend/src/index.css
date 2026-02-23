@@ -1,0 +1,29 @@
+@import "tailwindcss";
+/* @import "material-tailwind/react"; */
+
+
+
+@layer utilities {
+    .animate-in{
+        animation-fill-mode: both;
+    }
+
+    .side-in-from-top{
+        animation-name: slideInFromTop;
+    }
+
+    .duration-300{
+        animation-duration: 300ms;
+    }
+}
+
+@keyframes slideInFromTop {
+    0% {
+        transform: translateY(-1rem);
+        opacity: 0;
+    }
+    100% {
+        transform: translateY(0);
+        opacity: 1;
+    }
+}
