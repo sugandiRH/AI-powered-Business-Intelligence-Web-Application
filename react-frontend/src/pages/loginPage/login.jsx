@@ -1,5 +1,8 @@
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import logo from '../../assets/logo.png';
+
+import { useState } from "react";
+import api from "../../services/api";
 
 // for form validation, use react-hook-form
 import { useForm } from "react-hook-form";
@@ -8,6 +11,9 @@ import { loginValidation } from "../../validation/loginSchema";
 
 function Login() {
 
+    const navigate = useNavigate();
+    const [errorMessage, setErrorMessage] = useState("");
+
     // validation
     const {
         register,
@@ -15,8 +21,27 @@ function Login() {
         formState: { errors },
     } = useForm();
 
-    const onSubmit = (data) => {
-        console.log(data);
+    const onSubmit = async (data) => {
+        // console.log(data);
+        try {
+            const res = await api.post("/auth/login", {
+                email: data.email,
+                password: data.password,
+            });
+
+            localStorage.setItem("token", res.data.token);
+            navigate("/dashboard");
+            // alert("Login successful");
+
+        } catch (error) {
+            setErrorMessage(error.response?.data?.message || 
+                "Wrong email or password. Please try again."
+            );
+        }
+    };
+
+    const closeError = () => {
+        setErrorMessage("");
     };
 
 
@@ -41,6 +66,20 @@ function Login() {
                             </span>
                         </div>
                         <h2 className="text-center text-2xl/9 font-bold tracking-tight text-white">Welcome Back</h2>
+                        
+                        {/* display error message */}
+                        {errorMessage && (
+                            <div className="mt-4 flex items-center justify-between bg-red-500/10 border border-red-500 text-red-400 px-4 py-2 rounded-lg text-sm">
+                                <span>{errorMessage}</span>
+                                <button 
+                                    onClick={closeError}
+                                    className="ml-4 text-red-300 hover:text-white font-bold"
+                                >
+                                    ✕
+                                </button>
+                            </div>
+                        )}
+
                     </div>
 
                     <div className="mt-10 sm:mx-auto sm:w-full sm:max-w-sm">

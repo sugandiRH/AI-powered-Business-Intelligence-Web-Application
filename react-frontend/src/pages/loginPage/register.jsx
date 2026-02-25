@@ -1,11 +1,25 @@
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import logo from '../../assets/logo.png';
+
+import { useState } from 'react';
+import api from '../../services/api';
 
 // validation
 import { useForm } from "react-hook-form";
 import { registerValidation } from "../../validation/registerSchema";
 
 function Register() {
+    const navigate = useNavigate();
+    const [errorMessage, setErrorMessage] = useState("");
+
+    //connect with backend
+    const [form, setForm] = useState({
+        fullName: "",
+        email: "",
+        businessType: "",
+        password: "",
+        password_confirmation: "",
+    });
 
     // validation
     const {
@@ -15,8 +29,29 @@ function Register() {
         formState: { errors },
     } = useForm();
 
-    const onSubmit = (data) => {
-        console.log(data);
+    const onSubmit = async (data) => {
+        // console.log(data);
+        try {
+            const res = await api.post("/auth/register", {
+            name: data.fullName,
+            email: data.email,
+            business_type: data.businessType,
+            password: data.password,
+            password_confirmation: data.confirmPassword,
+            });
+
+            localStorage.setItem("token", res.data.token);
+            window.location.href = "/register";
+
+            // alert("Registered successfully");
+        } catch (error) {
+            setErrorMessage(error.response?.data?.message || 
+                "Please try again."
+            );
+        }
+    };
+    const closeError = () => {
+        setErrorMessage("");
     };
 
     const password = watch("password");
@@ -41,6 +76,19 @@ function Register() {
                             </span>
                         </div>
                         <h2 className="text-center text-2xl/9 font-bold tracking-tight">Sign up for your account</h2>
+
+                        {/* display error message */}
+                        {errorMessage && (
+                            <div className="mt-4 flex items-center justify-between bg-red-500/10 border border-red-500 text-red-400 px-4 py-2 rounded-lg text-sm">
+                                <span>{errorMessage}</span>
+                                <button 
+                                    onClick={closeError}
+                                    className="ml-4 text-red-300 hover:text-white font-bold"
+                                >
+                                    ✕
+                                </button>
+                            </div>
+                        )}
                     </div>
 
                     <div className="mt-10 sm:mx-auto sm:w-full sm:max-w-sm ">
@@ -52,6 +100,7 @@ function Register() {
                                         id="full-name"
                                         {...register("fullName", registerValidation.name)}
                                         className="block w-full rounded-md bg-white/5 px-3 py-1.5 text-base text-white outline-1 -outline-offset-1 outline-white/10 placeholder:text-gray-500 focus:outline-2 focus:-outline-offset-2 focus:outline-blue-500 sm:text-sm/6"
+                                        
                                     />
                                 </div>
                                 {errors.fullName && (
@@ -68,6 +117,7 @@ function Register() {
                                         id="email"
                                         {...register("email", registerValidation.email)}
                                         className="block w-full rounded-md bg-white/5 px-3 py-1.5 text-base text-white outline-1 -outline-offset-1 outline-white/10 placeholder:text-gray-500 focus:outline-2 focus:-outline-offset-2 focus:outline-blue-500 sm:text-sm/6"
+                                        
                                     />
                                 </div>
                                 {errors.email && (
@@ -84,7 +134,8 @@ function Register() {
                                     <select 
                                     id="business-type" 
                                     {...register("businessType", registerValidation.businessType)}
-                                    className="block w-full rounded-md bg-white/5 px-3 py-2 text-base text-white outline-1 -outline-offset-1 outline-white/10 placeholder:text-gray-500 focus:outline-2 focus:-outline-offset-2 focus:outline-blue-500 sm:text-sm/6" >
+                                    className="block w-full rounded-md bg-white/5 px-3 py-2 text-base text-white outline-1 -outline-offset-1 outline-white/10 placeholder:text-gray-500 focus:outline-2 focus:-outline-offset-2 focus:outline-blue-500 sm:text-sm/6" 
+                                    >
                                         <option className='text-gray-400' value="" disabled>Select Business Type</option>
                                         <option className='text-gray-400' value="retail">Retail</option>
                                     </select>
@@ -105,7 +156,8 @@ function Register() {
                                         type="password"
                                         {...register("password", registerValidation.password)}
                                         className="block w-full rounded-md bg-white/5 px-3 py-1.5 text-base text-white outline-1 -outline-offset-1 outline-white/10 placeholder:text-gray-500 focus:outline-2 focus:-outline-offset-2 focus:outline-blue-500 sm:text-sm/6"
-                                    />
+                                        
+                                   />
                                 </div>
                                 {errors.password && (
                                     <p className="text-red-400 text-[11px] mt-1">
@@ -123,7 +175,8 @@ function Register() {
                                         id="confirm-password"
                                         type="password"
                                         className="block w-full rounded-md bg-white/5 px-3 py-1.5 text-base text-white outline-1 -outline-offset-1 outline-white/10 placeholder:text-gray-500 focus:outline-2 focus:-outline-offset-2 focus:outline-blue-500 sm:text-sm/6"
-                                    
+                                            
+
                                         {...register("confirmPassword", {
                                             required: "Confirm password is required",
                                             validate: (value) =>
@@ -139,7 +192,8 @@ function Register() {
                             </div>
 
                             <div>
-                                <input type="submit" className="flex w-full justify-center rounded-md bg-blue-500 px-3 py-1.5 text-sm/6 font-semibold text-white hover:bg-blue-400 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-500" value="Sign up"/> 
+                                <input type="submit" 
+                                className="flex w-full justify-center rounded-md bg-blue-500 px-3 py-1.5 text-sm/6 font-semibold text-white hover:bg-blue-400 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-500" value="Sign up"/> 
                             </div>
                         </form>
 
