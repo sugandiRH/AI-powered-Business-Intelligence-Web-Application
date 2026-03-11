@@ -14,7 +14,9 @@ return new class extends Migration
         Schema::create('dataset_column_mappings', function (Blueprint $table) {
             $table->id();
 
-            $table->unsignedBigInteger('dataset_id');
+            $table->foreignId('dataset_id')
+                ->constrained()
+                ->onDelete('cascade');
 
             $table->string('excel_column');
             $table->string('mapped_column');
@@ -22,8 +24,6 @@ return new class extends Migration
             $table->decimal('confidence',5,2)->nullable();
 
             $table->timestamps();
-
-            $table->index(['dataset_id','excel_column']);
         });
     }
 

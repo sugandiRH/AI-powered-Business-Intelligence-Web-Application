@@ -12,26 +12,23 @@ return new class extends Migration
     public function up(): void
     {
         Schema::create('temp_business_data', function (Blueprint $table) {
-
             $table->id();
-
             $table->foreignId('dataset_id')
                 ->constrained()
                 ->onDelete('cascade');
 
+            $table->string('date')->nullable();
+            $table->string('month')->nullable();
+            $table->string('year')->nullable();
+            
             $table->string('product')->nullable();
             $table->string('category')->nullable();
 
-            $table->integer('quantity')->nullable();
-            $table->decimal('price',10,2)->nullable();
-            $table->decimal('total',10,2)->nullable();
-
-            $table->date('date')->nullable();
-            $table->integer('month')->nullable();
-            $table->integer('year')->nullable();
+            $table->string('quantity')->nullable();
+            $table->string('price')->nullable();
+            $table->string('total')->nullable();
 
             $table->boolean('is_valid')->default(false);
-
             $table->text('validation_error')->nullable();
 
             $table->timestamps();
@@ -43,6 +40,6 @@ return new class extends Migration
      */
     public function down(): void
     {
-        //
+        Schema::dropIfExists('temp_business_data');
     }
 };
