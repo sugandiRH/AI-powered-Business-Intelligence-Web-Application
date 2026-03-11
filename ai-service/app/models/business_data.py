@@ -13,4 +13,7 @@ class BusinessData(Base):
     category = Column(String, nullable=False)
     quantity = Column(Integer, nullable=False)
     price = Column(Float, nullable=False)
+    total = Column(Float, nullable=False)
+    month = Column(Integer, nullable=False)
+    year = Column(Integer, nullable=False)
     
