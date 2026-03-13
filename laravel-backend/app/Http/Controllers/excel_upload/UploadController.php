@@ -75,7 +75,10 @@ class UploadController extends Controller
                 return response()->json([
                     'message' => 'File uploaded and processed successfully',
                     'dataset_id' => $dataset->id,
-                    'rows_inserted' => $response->json('rows_inserted')
+                    'rows_inserted' => $response->json('rows_inserted'),
+                    "columns_detected" => $response->json('columns_detected'),
+                    "column_mapping" => $response->json('column_mapping'),
+                    'confidence_scores' => $response->json('confidence_scores')
                 ], 200);
             } else {
                 $dataset->status = 'failed';
@@ -95,6 +98,21 @@ class UploadController extends Controller
             ], 500);
         }
     }
-}
 
-?>
+    public function confirmUpload(Request $request)
+    {
+        try {
+            $response = Http::post('http://127.0.0.1:8001/confirm_upload', [
+            'dataset_id' => $request->dataset_id,
+            ]);
+
+            return response()->json($response->json());
+        } catch (\Exception $e) {
+
+            return response()->json([
+                'error' => $e->getMessage()
+            ], 500);
+
+        }
+    }
+}

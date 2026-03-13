@@ -54,6 +54,15 @@ function UploadPage() {
         }
     };
 
+    const mappingResponse = async () => {
+        try {
+            const res = await api.post("/confirm_upload", { dataset_id: response.dataset_id });
+            setResponse(res.data);
+
+        } catch (err) {
+            console.log("Error confirming upload:", err.response);
+        }
+    };
 
     const ColumnMappingTable = ({ response }) => {
     const { columns_detected, column_mapping, confidence_scores } = response;
@@ -128,18 +137,26 @@ function UploadPage() {
             {response.rows_inserted} rows inserted · {columns_detected.length} columns detected
         </p>
         {/* go back button */}
-            <button
-                onClick={() => window.history.back()}
-                className="mt-6 bg-gray-600 px-6 py-2 rounded hover:bg-gray-700"
-            >
-                Go Back
-            </button>
+        <button
+            onClick={() => window.history.back()}
+            className="mt-6 bg-gray-600 px-6 py-2 rounded hover:bg-gray-700"
+        >
+            Go Back
+        </button>
+
+        {/* confirm to insert tempory table */}
+        <button
+            onClick={mappingResponse}
+            className="bg-green-600 px-6 py-2 rounded hover:bg-green-700 disabled:opacity-50"
+        >
+            Confirm
+        </button>
         </div>
     );
     };
 
     return (
-        <div className="min-h-screen bg-slate-950 text-white p-8">
+        <div className="min-h-screen bg-slate-950 text-white p-20">
 
             <h1 className="text-2xl font-bold mb-6">Upload Dataset</h1>
 
@@ -199,7 +216,7 @@ function UploadPage() {
 
             {/* Response Display */}
             {response && (
-                <div className="mt-6 bg-green-900 p-4 rounded">
+                <div className="mt-6 bg-slate-900 px-20 py-5 rounded ">
                     <h3 className="font-bold mb-2">Success</h3>
                     <pre className="text-sm">
                         <table>

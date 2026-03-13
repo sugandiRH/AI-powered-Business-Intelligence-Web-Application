@@ -12,6 +12,8 @@ from app.models.temp_business_data import TempBusinessData
 
 from app.services.excel_reader import read_excel
 from app.services.ai_column_mapper import map_columns, STANDARD_COLUMNS
+from app.services.temp_data_service import save_temp_data
+# from app.services.data_cleaner import clean_data
 
 
 router = APIRouter()
@@ -49,32 +51,22 @@ async def upload_file(
         df = df[[col for col in df.columns if col in STANDARD_COLUMNS]]
 
         # insert into temp_business_data table
-
-        db.execute(
-            text("DELETE FROM temp_business_data WHERE dataset_id = :dataset_id"),
-            {"dataset_id": dataset_id}
-        )
-
-        records = df.to_dict(orient="records")
-
-        for r in records:
-            r["dataset_id"] = dataset_id
-            r.setdefault("total", None)
-            r.setdefault("month", None)
-            r.setdefault("year", None)
-
-        db.bulk_insert_mappings(TempBusinessData, records)
-        db.commit()
+        save_temp_data(df, dataset_id, db)
+    
+        # Clean data and move to main table
+        # df = clean_data(df)
 
         # Return response
         return {
-            # "status": "success",
+            "status": "success",
             "rows_inserted": len(df),
             "columns_detected": df.columns.tolist(),
             "column_mapping": column_mapping,
             'confidence_scores': confidence
-            # "dataset_id": dataset_id
         }
+
     except Exception as e:
         db.rollback()
         raise HTTPException(status_code=400, detail=str(e))
+    
+    

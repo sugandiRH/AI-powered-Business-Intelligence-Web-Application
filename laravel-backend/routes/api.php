@@ -39,6 +39,7 @@ Route::middleware('auth:sanctum')->group(function () {
 
 Route::middleware('auth:sanctum')->group(function () {
     Route::post('/upload', [UploadController::class, 'upload']);
+    Route::post('/confirm_upload', [UploadController::class, 'confirmUpload']);
 });
 
 
