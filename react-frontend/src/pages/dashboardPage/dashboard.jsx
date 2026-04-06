@@ -206,8 +206,8 @@ function Dashboard() {
                                     <tr>
                                         <th className="px-6 py-3">File Name</th>
                                         <th className="px-6 py-3">Uploaded Date</th>
-                                        <th className="px-6 py-3">Rows</th>
-                                        <th className="px-6 py-3">Columns</th>
+                                        <th className="px-6 py-3">Total Rows</th>
+                                        <th className="px-6 py-3">Mapped Columns</th>
                                         <th className="px-6 py-3">Status</th>
                                         <th className="px-6 py-3">Actions</th>
                                     </tr>
@@ -221,7 +221,7 @@ function Dashboard() {
                                                     {new Date(dataset.created_at).toLocaleDateString()}
                                                 </td>
                                                 <td className="px-4 py-2">
-                                                    {dataset.rows_inserted || 0}
+                                                    {dataset.total_rows || 0}
                                                 </td>
                                                 <td className="px-4 py-2">
                                                     {dataset.columns_count || 0}

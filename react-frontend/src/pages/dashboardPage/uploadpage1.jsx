@@ -1,10 +1,31 @@
-import { useState } from "react";
+
+import { useEffect, useState } from "react";
 import api from "../../services/api";
-import { UploadCloud } from "lucide-react";
+import { UploadCloud, ChevronDown, LayoutDashboard, BarChart3, Settings, LogOut, FileText } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 
+
 function UploadPage() {
+    const [isSidebarOpen, setIsSidebarOpen] = useState(true);
+    const [isDatasetOpen, setIsDatasetOpen] = useState(false);
+    const [isProfileOpen, setIsProfileOpen] = useState(false);
+    const [user, setUser] = useState(null);
     const navigate = useNavigate();
+
+    // Auth check and user fetch (copy from dashboard)
+    useEffect(() => {
+        const token = localStorage.getItem("token");
+        if (!token) {
+            navigate("/login");
+            return;
+        }
+        api.get("/user")
+            .then(res => setUser(res.data))
+            .catch(err => {
+                localStorage.removeItem("token");
+                navigate("/login");
+            });
+    }, [navigate]);
 
     const [file, setFile] = useState(null);
     const [dragActive, setDragActive] = useState(false);
@@ -69,7 +90,7 @@ function UploadPage() {
             }
 
             // 👉 go to review page
-            navigate(`/review/${datasetId}`);
+            navigate(`/review1/${datasetId}`);
 
         } catch (err) {
             console.log("Error confirming upload:", err.response);
@@ -170,86 +191,144 @@ function UploadPage() {
     };
 
     return (
-        <div className="min-h-screen bg-slate-950 text-white p-20">
-
-            <h1 className="text-2xl font-bold mb-6">Upload Dataset</h1>
-
-            {/* Drop Area */}
-            <div
-                className={`border-2 border-dashed rounded-xl p-10 text-center transition 
-                ${dragActive ? "border-blue-500 bg-slate-800" : "border-gray-600"}`}
-                onDragOver={(e) => {
-                    e.preventDefault();
-                    setDragActive(true);
-                }}
-                onDragLeave={() => setDragActive(false)}
-                onDrop={handleDrop}
-            >
-                <UploadCloud size={40} className="mx-auto mb-4 text-gray-400" />
-
-                <p className="mb-4">
-                    Drag & Drop your Excel file here
-                </p>
-
-                <p className="text-sm text-gray-400 mb-4">
-                    Supported formats: .xlsx, .xls
-                </p>
-
-                <input
-                    type="file"
-                    accept=".xlsx,.xls"
-                    onChange={handleFileChange}
-                    className="hidden"
-                    id="fileInput"
-                />
-
-                <label
-                    htmlFor="fileInput"
-                    className="bg-blue-600 px-4 py-2 rounded cursor-pointer hover:bg-blue-700"
+        <div className="min-h-screen bg-slate-950 text-white overflow-hidden">
+            <div className="flex h-screen">
+                {/* Sidebar */}
+                <div
+                    className={`bg-gray-900 text-white transition-all duration-300 ${isSidebarOpen ? "w-64" : "w-20"}`}
                 >
-                    Choose File
-                </label>
-
-                {file && (
-                    <p className="mt-4 text-green-400">
-                        Selected: {file.name}
-                    </p>
-                )}
-            </div>
-
-            {/* Upload Button */}
-            <div className="mt-6">
-                <button
-                    onClick={handleUpload}
-                    disabled={loading}
-                    className="bg-green-600 px-6 py-2 rounded hover:bg-green-700 disabled:opacity-50"
-                >
-                    {loading ? "Uploading..." : "Upload"}
-                </button>
-            </div>
-
-            {/* Response Display */}
-            {response && (
-                <div className="mt-6 bg-slate-900 px-20 py-5 rounded ">
-                    <h3 className="font-bold mb-2">Success</h3>
-                    <pre className="text-sm">
-                        <table>
-                            <tbody>
-                                <ColumnMappingTable response={response} />
-                            </tbody>
-                        </table>
-                    </pre>
-                    
+                    <div className="p-4 text-xl font-bold border-b border-gray-700">Data Talk</div>
+                    <div className="p-4 space-y-3">
+                        {/* Dashboard */}
+                        <div className="flex items-center space-x-3 hover:bg-gray-800 p-2 rounded cursor-pointer" onClick={() => navigate("/")}> 
+                            <LayoutDashboard size={20} />
+                            {isSidebarOpen && <span>Dashboard</span>}
+                        </div>
+                        {/* Dataset Dropdown */}
+                        <div>
+                            <div
+                                className="flex items-center justify-between hover:bg-gray-800 p-2 rounded cursor-pointer"
+                                onClick={() => setIsDatasetOpen(!isDatasetOpen)}
+                            >
+                                <div className="flex items-center space-x-3">
+                                    <FileText size={20} />
+                                    {isSidebarOpen && <span>Datasets</span>}
+                                </div>
+                                {isSidebarOpen && <ChevronDown size={16} />}
+                            </div>
+                            {isDatasetOpen && isSidebarOpen && (
+                                <div className="ml-8 mt-2 space-y-2 text-sm text-gray-300">
+                                    <div 
+                                        className="hover:text-white cursor-pointer"
+                                        onClick={() => navigate("/upload")}
+                                    >
+                                        Upload Dataset
+                                    </div>
+                                    <div className="hover:text-white cursor-pointer">
+                                        Manage Datasets
+                                    </div>
+                                </div>
+                            )}
+                        </div>
+                        {/* Visualization */}
+                        <div className="flex items-center space-x-3 hover:bg-gray-800 p-2 rounded cursor-pointer">
+                            <BarChart3 size={20} />
+                            {isSidebarOpen && <span>Visualization</span>}
+                        </div>
+                    </div>
                 </div>
-            )}
-
-            {error && (
-                <div className="mt-6 bg-red-900 p-4 rounded">
-                    <h3 className="font-bold mb-2">Error</h3>
-                    <p>{error}</p>
+                {/* Main Content */}
+                <div className="flex-1 flex flex-col">
+                    {/* Top Bar */}
+                    <div className="bg-gray-900 text-white p-4 shadow px-6 py-4 flex justify-between items-center">
+                        <h1 className="text-xl font-bold">Upload Dataset</h1>
+                        <div className="relative">
+                            <div
+                                className="flex items-center space-x-2 cursor-pointer"
+                                onClick={() => setIsProfileOpen(!isProfileOpen)}
+                            >
+                                {user && (
+                                    <span className="font-medium">{user.name}</span>
+                                )}
+                                <ChevronDown size={18} />
+                            </div>
+                            {isProfileOpen && (
+                                <div className="absolute right-0 mt-2 w-40 bg-gray-800 shadow rounded-lg py-2">
+                                    <div className="px-4 py-2 hover:bg-gray-900 cursor-pointer flex items-center space-x-2">
+                                        <Settings size={16} />
+                                        <span>Settings</span>
+                                    </div>
+                                    <div className="px-4 py-2 hover:bg-gray-900 cursor-pointer flex items-center space-x-2 text-red-500">
+                                        <LogOut size={16} />
+                                        <button onClick={() => {
+                                            localStorage.removeItem("token");
+                                            navigate("/login");
+                                        }}>Logout</button>
+                                    </div>
+                                </div>
+                            )}
+                        </div>
+                    </div>
+                    {/* Upload Form Content */}
+                    <div className="p-6 overflow-y-auto flex-1">
+                        {/* Drop Area */}
+                        <div
+                            className={`border-2 border-dashed rounded-xl p-10 text-center transition ${dragActive ? "border-blue-500 bg-slate-800" : "border-gray-600"}`}
+                            onDragOver={(e) => {
+                                e.preventDefault();
+                                setDragActive(true);
+                            }}
+                            onDragLeave={() => setDragActive(false)}
+                            onDrop={handleDrop}
+                        >
+                            <UploadCloud size={40} className="mx-auto mb-4 text-gray-400" />
+                            <p className="mb-4">Drag & Drop your Excel file here</p>
+                            <p className="text-sm text-gray-400 mb-4">Supported formats: .xlsx, .xls</p>
+                            <input
+                                type="file"
+                                accept=".xlsx,.xls"
+                                onChange={handleFileChange}
+                                className="hidden"
+                                id="fileInput"
+                            />
+                            <label
+                                htmlFor="fileInput"
+                                className="bg-blue-600 px-4 py-2 rounded cursor-pointer hover:bg-blue-700"
+                            >
+                                Choose File
+                            </label>
+                            {file && (
+                                <p className="mt-4 text-green-400">Selected: {file.name}</p>
+                            )}
+                        </div>
+                        {/* Upload Button */}
+                        <div className="mt-6">
+                            <button
+                                onClick={handleUpload}
+                                disabled={loading}
+                                className="bg-green-600 px-6 py-2 rounded hover:bg-green-700 disabled:opacity-50"
+                            >
+                                {loading ? "Uploading..." : "Upload"}
+                            </button>
+                        </div>
+                        {/* Response Display */}
+                        {response && (
+                            <div className="mt-6 bg-slate-900 px-10 py-5 rounded ">
+                                <h3 className="font-bold mb-2">Success</h3>
+                                <div className="text-sm">
+                                    <ColumnMappingTable response={response} />
+                                </div>
+                            </div>
+                        )}
+                        {error && (
+                            <div className="mt-6 bg-red-900 p-4 rounded">
+                                <h3 className="font-bold mb-2">Error</h3>
+                                <p>{error}</p>
+                            </div>
+                        )}
+                    </div>
                 </div>
-            )}
-
+            </div>
         </div>
     );
 }

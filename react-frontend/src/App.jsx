@@ -7,6 +7,7 @@ import Dashboard from './pages/dashboardPage/dashboard.jsx';
 import Testpage from './pages/dashboardPage/testpage.jsx';
 import UplaodPage from './pages/dashboardPage/uploadpage1.jsx';
 import ReviewPage from './pages/reviewPage/reviewpage.jsx';
+import ReviewPage1 from './pages/reviewPage/reviewPage1.jsx';
 
 function App() {
 
@@ -20,6 +21,7 @@ function App() {
         <Route path='/testpage' element={<Testpage />} />
         <Route path="/upload" element={<UplaodPage />} />
         <Route path="/review/:datasetId" element={<ReviewPage />} />
+        <Route path="/review1/:datasetId" element={<ReviewPage1 />} />
 
       </Routes>
     </BrowserRouter>
