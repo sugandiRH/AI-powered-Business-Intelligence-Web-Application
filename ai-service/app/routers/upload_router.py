@@ -52,6 +52,13 @@ async def upload_file(
 
         # insert into temp_business_data table
         save_temp_data(df, dataset_id, db)
+
+        # update total_rows in datasets table
+        db.execute(
+            text("UPDATE datasets SET total_rows = :total_rows WHERE id = :dataset_id"),
+            {"total_rows": len(df), "dataset_id": dataset_id}
+        )
+        db.commit()
     
         # Clean data and move to main table
         # df = clean_data(df)

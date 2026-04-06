@@ -35,7 +35,10 @@ async def confirm_upload(
 
         clean_dataset(dataset_id, db)
 
-        return {"message": "Cleaning completed"}
+        return {
+            "message": "Cleaning Start",
+            "dataset_id": dataset_id
+        }
 
     except Exception as e:
 

@@ -1,8 +1,10 @@
 import { useState } from "react";
 import api from "../../services/api";
 import { UploadCloud } from "lucide-react";
+import { useNavigate } from "react-router-dom";
 
 function UploadPage() {
+    const navigate = useNavigate();
 
     const [file, setFile] = useState(null);
     const [dragActive, setDragActive] = useState(false);
@@ -58,6 +60,16 @@ function UploadPage() {
         try {
             const res = await api.post("/confirm_upload", { dataset_id: response.dataset_id });
             setResponse(res.data);
+
+            const datasetId = res.data.dataset_id;
+
+            if (!datasetId) {
+                console.error("dataset_id missing!");
+                return;
+            }
+
+            // 👉 go to review page
+            navigate(`/review/${datasetId}`);
 
         } catch (err) {
             console.log("Error confirming upload:", err.response);
@@ -139,6 +151,7 @@ function UploadPage() {
         {/* go back button */}
         <button
             onClick={() => window.history.back()}
+            // onClick={() => navigate("/review")}
             className="mt-6 bg-gray-600 px-6 py-2 rounded hover:bg-gray-700"
         >
             Go Back
@@ -146,6 +159,7 @@ function UploadPage() {
 
         {/* confirm to insert tempory table */}
         <button
+            type="button"
             onClick={mappingResponse}
             className="bg-green-600 px-6 py-2 rounded hover:bg-green-700 disabled:opacity-50"
         >

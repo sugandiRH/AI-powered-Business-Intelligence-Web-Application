@@ -8,6 +8,7 @@ use App\Http\Controllers\Auth\LoginController;
 use App\Http\Controllers\Auth\LogoutController;
 use App\Http\Controllers\excel_upload\UploadController;
 use App\Http\Controllers\DatasetController;
+use App\Http\Controllers\TempBusinessDataController;
 /*
 |--------------------------------------------------------------------------
 | Public Routes
@@ -40,6 +41,7 @@ Route::middleware('auth:sanctum')->group(function () {
 Route::middleware('auth:sanctum')->group(function () {
     Route::post('/upload', [UploadController::class, 'upload']);
     Route::post('/confirm_upload', [UploadController::class, 'confirmUpload']);
+    Route::get('/temp_business_data/{datasetId}', [TempBusinessDataController::class, 'getDataByDatasetId']);
 });
 
 

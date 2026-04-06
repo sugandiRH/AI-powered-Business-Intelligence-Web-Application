@@ -12,35 +12,33 @@ WARNING = "warning"
 INFO = "info"
 
 SEVERITY_MAP : dict[str, int] = {
-    
+
+    "missing_product":       CRITICAL,
+    "unresolvable_row":      CRITICAL,   # can't derive any of qty/price/total  
     "invalid_quantity":      CRITICAL, 
-    "missing_quantity":      CRITICAL,  
-
     "invalid_price":         CRITICAL,  
-    "missing_price":         CRITICAL,
-
-    "missing_product":       CRITICAL,   
-
-    "unresolvable_row":      CRITICAL,   # can't derive any of qty/price/total
- 
-    "invalid_date":          WARNING,    # future, or pre-2000 date
-    "missing_date":          WARNING,    
-
-    "invalid_month":         WARNING,    
-    "invalid_year":          WARNING,    # year null or out of range
-
-    "month_date_mismatch":   WARNING,    # month column ≠ month in date col
+    "invalid_date":          CRITICAL,
+    
+    "missing_date":          WARNING,
+    "month_date_mismatch":   WARNING,    # month column ≠ month in date col 
     "year_date_mismatch":    WARNING,    # year column ≠ year in date col
-
+    "date_period_outlier":   WARNING,
     "price_outlier":         WARNING,    # price > 2× product average
     "quantity_outlier":      WARNING,    # quantity > 2× product average
+    "missing_quantity":      WARNING,      
+    "missing_price":         WARNING, 
+    "duplicate_row":         WARNING,   
+    "missing_category":      WARNING,
 
-    "price_inconsistency":   WARNING,    # same product has different prices  
-    "missing_category":      WARNING,    # category blank or null
-
-    "duplicate_row":         WARNING,    # exact duplicate of another row
-
-    "total_mismatch":        INFO,       
+    "derived_month":         INFO,    # month derived from date
+    "derived_year":          INFO,    # year derived from date
+    "derived_total":         INFO,    
+    "derived_price":         INFO,
+    "derived_quantity":      INFO,
+    "total_mismatch":        INFO,    
+    "invalid_month":         INFO,    
+    "invalid_year":          INFO,    # year null or out of range
+    
 }
 
 
@@ -153,7 +151,7 @@ def normalize(df: pd.DataFrame) -> pd.DataFrame:
             .replace({"": None, "nan": None})
         )
         # Use infer_datetime_format for flexible parsing, handles '2026 Jan 06' correctly
-        df["date"] = pd.to_datetime(df["date"], errors="coerce", dayfirst=False)
+        df["date"] = pd.to_datetime(df["date"], errors="coerce", dayfirst=False, format="mixed")
 
 
     for col in ("quantity", "price", "total"):
@@ -186,15 +184,20 @@ def derive_columns(df: pd.DataFrame) -> pd.DataFrame:
     # month derive
     missing_month = df["month"].isna() & has_date
     df.loc[missing_month, "month"] = df.loc[missing_month, "date"].dt.month
+    _add_error(df, missing_month, "derived_month")
 
     # year derive
     missing_year = df["year"].isna() & has_date
     df.loc[missing_year, "year"] = df.loc[missing_year, "date"].dt.year
+    _add_error(df, missing_year, "derived_year")
 
     # total derive
     valid = df["quantity"].notna() & df["price"].notna()
     missing_total = df["total"].isna() & valid
+    _add_error(df, df["total"].isna() & ~valid, "unresolvable_row")
+
     df.loc[missing_total, "total"] = df["quantity"] * df["price"]
+    _add_error(df, missing_total, "derived_total")
 
     _add_error(df, df["date"].isna(), "missing_date")
     _add_error(df, df["product"] == "", "missing_product")
@@ -217,14 +220,13 @@ def validate_time(df: pd.DataFrame) -> pd.DataFrame:
         
 
     # month validation
+    # 
     if has_month:
-        def is_invalid_month(val):
-            if pd.isna(val):
-                return True
-            return _safe_int_month(val) is None
-        
-        bad_month = df["month"].apply(is_invalid_month)
-        _add_error(df, bad_month, "invalid_month")
+        bad_month = df["month"].apply(lambda v: pd.isna(v) or _safe_int_month(v) is None)
+        # if date exists, month was already derived — just INFO
+        has_date_col = df["date"].notna()
+        _add_error(df,  bad_month & has_date_col,  "invalid_month")   # INFO in SEVERITY_MAP
+        _add_error(df,  bad_month & ~has_date_col, "invalid_month")   # stays WARNING (no recovery)
 
     
     # year validation
@@ -306,15 +308,15 @@ def validate_business(df: pd.DataFrame) -> pd.DataFrame:
     mismatch    = all_present & ((calculated - df["total"]).abs() > TOTAL_TOLERANCE)
     _add_error(df, mismatch, "total_mismatch")
 
-    if df["product"].notna().any():
-        price_counts = (
-            df[df["price"].notna()]
-            .groupby("product")["price"]
-            .nunique()
-        )
-        multi_price_products = price_counts[price_counts > 1].index
-        price_inconsistency = df["product"].isin(multi_price_products) & df["price"].notna()
-        _add_error(df, price_inconsistency, "price_inconsistency")
+    # if df["product"].notna().any():
+    #     price_counts = (
+    #         df[df["price"].notna()]
+    #         .groupby("product")["price"]
+    #         .nunique()
+    #     )
+    #     multi_price_products = price_counts[price_counts > 1].index
+    #     price_inconsistency = df["product"].isin(multi_price_products) & df["price"].notna()
+    #     _add_error(df, price_inconsistency, "price_inconsistency")
  
     # ── duplicate rows ────────────────────────────────────────────────────────
     dup_cols = [c for c in ("date", "product", "quantity", "price") if c in df.columns]
@@ -332,7 +334,7 @@ def detect_outliers(df: pd.DataFrame) -> pd.DataFrame:
     group_size = df.groupby("product")["quantity"].transform("count")
  
     # ── quantity ──────────────────────────────────────────────────────────────
-    avg_qty = df.groupby("product")["quantity"].transform("mean")
+    avg_qty = df.groupby("product")["quantity"].transform("median")
     large_group = group_size >= OUTLIER_MIN_GROUP_SIZE
  
     qty_high = df["quantity"].notna() & large_group & (
@@ -344,7 +346,7 @@ def detect_outliers(df: pd.DataFrame) -> pd.DataFrame:
     # _add_error(df, qty_high | qty_low, "quantity_outlier")
  
     # ── price ─────────────────────────────────────────────────────────────────
-    avg_price = df.groupby("product")["price"].transform("mean")
+    avg_price = df.groupby("product")["price"].transform("median")
  
     price_high = df["price"].notna() & large_group & (
         df["price"] > avg_price * OUTLIER_MULTIPLIER
@@ -356,11 +358,13 @@ def detect_outliers(df: pd.DataFrame) -> pd.DataFrame:
 
     qty_outlier = qty_high | qty_low
     _add_error(df, qty_outlier, "quantity_outlier")
-    df.loc[qty_outlier, "mean_quantity"] = avg_qty[qty_outlier].round(2)
+    # df.loc[qty_outlier, "mean_quantity"] = avg_qty[qty_outlier].round(2)
+    df.loc[qty_outlier,   "mean_quantity"] = df.groupby("product")["quantity"].transform("mean")[qty_outlier].round(2).values
 
     price_outlier = price_high | price_low
     _add_error(df, price_outlier, "price_outlier")
-    df.loc[price_outlier, "mean_price"] = avg_price[price_outlier].round(2)
+    # df.loc[price_outlier, "mean_price"] = avg_price[price_outlier].round(2)
+    df.loc[price_outlier,   "mean_price"] = df.groupby("product")["price"].transform("mean")[price_outlier].round(2).values
 
     return df
 
