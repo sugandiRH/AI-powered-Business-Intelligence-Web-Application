@@ -14,8 +14,7 @@ from __future__ import annotations
 from sqlalchemy import text
 import pandas as pd
 
-# from app.services.finalize_dataset import finalize_dataset
-# from app.services.ai_row_correction import get_ai_row_correction
+from app.services.ai_spelling_correction import SKIP_VALUES, correct_spelling
 
 # import validation function
 from app.services.validation_pipeline import (
@@ -50,9 +49,48 @@ def clean_dataset(dataset_id, db) -> None:
     df = finalize_flag(df)
 
     persist(df, db)
+
+    # ai spelling correction
+    mapping, confidence_scores = correct_spelling(db, dataset_id)
+
+    for _, row in df.iterrows():
+        product_key  = str(row["product"]).lower().strip()  if pd.notna(row["product"])  else None
+        category_key = str(row["category"]).lower().strip() if pd.notna(row["category"]) else None
+
+        suggested_product  = mapping.get(product_key)  if product_key  and product_key  not in SKIP_VALUES else None
+        suggested_category = mapping.get(category_key) if category_key and category_key not in SKIP_VALUES else None
+
+        final_suggested_product = (
+            suggested_product
+            if suggested_product and suggested_product.lower().strip() != product_key
+            else None
+        )
+        final_suggested_category = (
+            suggested_category
+            if suggested_category and suggested_category.lower().strip() != category_key
+            else None
+        )
+
+        if final_suggested_product is None and final_suggested_category is None:
+            continue
+
+        # Debug — remove after confirming
+        # print(f"row id={row['id']} | product='{row['product']}' → suggested='{suggested_product}' → final='{final_suggested_product}'")
+        # print(f"row id={row['id']} | category='{row['category']}' → suggested='{suggested_category}' → final='{final_suggested_category}'")
+
+
+        db.execute(text("""
+            UPDATE temp_business_data_sample
+            SET suggested_product = :suggested_product,
+                suggested_category = :suggested_category
+            wHERE id = :id
+        """), {
+            "suggested_product": final_suggested_product,
+            "suggested_category": final_suggested_category,
+            "id": row["id"]
+        })
     db.commit()
 
-    # get_ai_row_correction(dataset_id, db)
 
 
 
