@@ -15,6 +15,7 @@ import {
     CircleCheck,
     Info,
     PencilLine,
+    Trash2,
 } from "lucide-react";
 
 function ReviewPage() {
@@ -26,6 +27,7 @@ function ReviewPage() {
     const [isSidebarOpen, setIsSidebarOpen] = useState(true);
     const [isDatasetOpen, setIsDatasetOpen] = useState(false);
     const [isProfileOpen, setIsProfileOpen] = useState(false);
+
 
     const navigate = useNavigate();
     const [user, setUser] = useState(null);
@@ -61,6 +63,7 @@ function ReviewPage() {
     }, []);
 
     const [data, setData] = useState({
+        ai_suggestions: [],
         critical: [],
         warning: [],
         info: []
@@ -69,13 +72,15 @@ function ReviewPage() {
     useEffect(() => {
         const fetchData = async () => {
             try {
-                const [criticalRes, warningRes, infoRes] = await Promise.all([
+                const [aiSuggetionsRes, criticalRes, warningRes, infoRes] = await Promise.all([
+                    api.get(`/spelling_suggestions/${datasetId}`),
                     api.get(`/temp_critical_business_data/${datasetId}`),
                     api.get(`/temp_warning_business_data/${datasetId}`),
                     api.get(`/temp_info_business_data/${datasetId}`)
                 ]);
 
                 setData({
+                    ai_suggestions: aiSuggetionsRes.data|| [],
                     critical: criticalRes.data.critical_rows || [],
                     warning: warningRes.data.warning_rows || [],
                     info: infoRes.data.info_rows || []
@@ -102,9 +107,30 @@ function ReviewPage() {
 
     // cards 
     const cards = [
+        // ai_suggestions
+        {
+            key: "ai_suggestions",
+            label: "AI Suggestions",
+            icon: <CircleAlert size={20} />,
+            count : data.ai_suggestions.length,
+            active: {
+                wrapper: "border-purple-500/60 bg-purple-500/10",
+                label: "text-purple-400",
+                count: "text-purple-400",
+                bar: "bg-purple-500",
+                dot: "bg-purple-500",
+            },
+            inactive: {
+                wrapper: "border-gray-700 bg-gray-800/60 hover:border-purple-500/40 hover:bg-purple-500/5",
+                label: "text-gray-400",
+                count: "text-white",
+            },
+        },
+
+        // critical
         {
             key: "critical",
-            lable: "Critical",
+            label: "Critical",
             icon: <CircleAlert size={20} />,
             count : data.critical.length,
             active: {
@@ -120,6 +146,8 @@ function ReviewPage() {
                 count: "text-white",
             },
         },
+
+        // warning
         {
             key: "warning",
             label: "Warning",
@@ -138,6 +166,8 @@ function ReviewPage() {
                 count: "text-white",
             },
         },
+
+        // valid
         {
             key: "info",
             label: "Valid",
@@ -160,6 +190,7 @@ function ReviewPage() {
 
     // ── Table config per type ────────────────────────────────────────────────
     const tableConfig = {
+        ai_suggestions: { title: "AI Spelling Suggestions", titleColor: "text-purple-400", dot: "bg-purple-500", rowHover: "hover:bg-purple-500/5" },
         critical: { title: "Critical Issues", titleColor: "text-red-400", dot: "bg-red-500", rowHover: "hover:bg-red-500/5" },
         warning:  { title: "Warning Issues",  titleColor: "text-yellow-400", dot: "bg-yellow-400", rowHover: "hover:bg-yellow-500/5" },
         info:     { title: "Valid Rows",       titleColor: "text-emerald-400", dot: "bg-emerald-500", rowHover: "hover:bg-emerald-500/5" },
@@ -167,6 +198,44 @@ function ReviewPage() {
  
     const activeRows = data[activeCard] || [];
     const activeCfg  = tableConfig[activeCard];
+
+    const [editingRowId, setEditingRowId] = useState(null);
+    const [editValues, setEditValues] = useState({});
+
+    const handleEditStart = (row) => {
+        setEditingRowId(row.id);
+        setEditValues({
+            date:     row.date     || "",
+            month:    row.month    || "",
+            year:     row.year     || "",
+            product:  row.product  || "",
+            category: row.category || "",
+            quantity: row.quantity || "",
+            price:    row.price    || "",
+            total:    row.total    || "",
+        });
+    };
+
+    const handleEditSave = async (row) => {
+        try {
+            await api.put(`/temp_business_data_sample/${row.id}`, editValues);
+            // Update local state so table reflects change immediately
+            setData(prev => ({
+                ...prev,
+                [activeCard]: prev[activeCard].map(r =>
+                    r.id === row.id ? { ...r, ...editValues } : r
+                )
+            }));
+            setEditingRowId(null);
+        } catch (err) {
+            console.error("Save failed", err);
+        }
+    };
+
+    const handleEditCancel = () => {
+        setEditingRowId(null);
+        setEditValues({});
+    };
 
 
     return (
@@ -184,7 +253,7 @@ function ReviewPage() {
 
                     <div className="p-4 space-y-3">
                         {/* Dashboard */}
-                        <div className="flex items-center space-x-3 hover:bg-gray-800 p-2 rounded cursor-pointer">
+                        <div className="flex items-center space-x-3 hover:bg-gray-800 p-2 rounded cursor-pointer" onClick={() => navigate("/dashboard")}>
                             <LayoutDashboard size={20} />
                             {isSidebarOpen && <span>Dashboard</span>}
                         </div>
@@ -264,7 +333,7 @@ function ReviewPage() {
                     {/* content */}
                     <div className="flex-1 overflow-y-auto p-6 space-y-6">
                         {/* ── Cards ── */}
-                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
                             {cards.map((card) => {
                                 const isActive = activeCard === card.key;
                                 const style = isActive ? card.active : card.inactive;
@@ -288,7 +357,7 @@ function ReviewPage() {
                                         <p className="text-xs text-gray-500 mt-1">records</p>
                                         {/* Active indicator bar */}
                                         {isActive && (
-                                            <div className={`absolute bottom-0 left-0 right-0 h-[3px] ${card.active.bar}`} />
+                                            <div className={`absolute bottom-0 left-0 right-0 h-0.75 ${card.active.bar}`} />
                                         )}
                                     </button>
                                 );
@@ -310,6 +379,79 @@ function ReviewPage() {
                                 <div className="bg-gray-800/50 border border-gray-700 rounded-xl p-10 text-center text-sm text-gray-500">
                                     No {activeCard} records found for this dataset.
                                 </div>
+                            ) : activeCard === "ai_suggestions" ? (
+                                <div className="overflow-x-auto rounded-xl border border-gray-700/60 bg-gray-900">
+                                    <table className="w-full text-sm">
+                                        <thead>
+                                            <tr className="border-b border-gray-700/60 bg-gray-800/60">
+                                                {["Column", "Original Value", "Suggested Value", "Confidence", "Actions"].map(h => (
+                                                    <th key={h} className="px-5 py-3 text-left text-xs font-semibold text-gray-400 uppercase tracking-wider whitespace-nowrap">
+                                                        {h}
+                                                    </th>
+                                                ))}
+                                            </tr>
+                                        </thead>
+                                        <tbody className="divide-y divide-gray-800">
+                                            {activeRows.map((row, index) => (
+                                                <tr key={index} className="transition-colors hover:bg-purple-500/5">
+                                                    {/* Column name badge */}
+                                                    <td className="px-5 py-3.5 whitespace-nowrap">
+                                                        <span className={`px-2 py-0.5 rounded text-xs font-medium ${
+                                                            row.column_name === 'product'
+                                                                ? 'bg-blue-500/20 text-blue-400'
+                                                                : 'bg-orange-500/20 text-orange-400'
+                                                        }`}>
+                                                            {row.column_name}
+                                                        </span>
+                                                    </td>
+
+                                                    {/* Original — strikethrough style */}
+                                                    <td className="px-5 py-3.5 text-gray-400 text-xs font-mono whitespace-nowrap line-through decoration-red-400/60">
+                                                        {row.original_value}
+                                                    </td>
+
+                                                    {/* Suggested — highlighted */}
+                                                    <td className="px-5 py-3.5 text-green-400 text-xs font-mono font-medium whitespace-nowrap">
+                                                        {row.suggested_value}
+                                                    </td>
+
+                                                    {/* Confidence bar */}
+                                                    <td className="px-5 py-3.5 whitespace-nowrap">
+                                                        <div className="flex items-center gap-2">
+                                                            <div className="w-16 h-1.5 rounded-full bg-gray-700 overflow-hidden">
+                                                                <div
+                                                                    className="h-full rounded-full bg-purple-500"
+                                                                    style={{ width: `${(row.confidence ?? 0) * 100}%` }}
+                                                                />
+                                                            </div>
+                                                            <span className="text-xs text-gray-400 font-mono">
+                                                                {row.confidence ? `${Math.round(row.confidence * 100)}%` : '—'}
+                                                            </span>
+                                                        </div>
+                                                    </td>
+
+                                                    {/* Actions */}
+                                                    <td className="px-5 py-3.5 whitespace-nowrap">
+                                                        <div className="flex gap-3">
+                                                            <button
+                                                                // onClick={() => handleApprove(row)}
+                                                                className="flex items-center gap-1.5 text-xs text-green-400 hover:text-green-300 transition-colors"
+                                                            >
+                                                                ✓ Accept
+                                                            </button>
+                                                            <button
+                                                                // onClick={() => handleReject(row)}
+                                                                className="flex items-center gap-1.5 text-xs text-red-400 hover:text-red-300 transition-colors"
+                                                            >
+                                                                ✕ Reject
+                                                            </button>
+                                                        </div>
+                                                    </td>
+                                                </tr>
+                                            ))}
+                                        </tbody>
+                                    </table>
+                                </div>
                             ) : (
                                 <div className="overflow-x-auto rounded-xl border border-gray-700/60 bg-gray-900">
                                     <table className="w-full text-sm">
@@ -325,28 +467,159 @@ function ReviewPage() {
                                         <tbody className="divide-y divide-gray-800">
                                             {activeRows.map((row, index) => (
                                                 <tr key={index} className={`transition-colors ${activeCfg.rowHover}`}>
-                                                    <td className="px-5 py-3.5 text-gray-300 font-mono text-xs whitespace-nowrap">{row.date || "—"}</td>
-                                                    <td className="px-5 py-3.5 text-gray-300 text-xs whitespace-nowrap">{row.month || "—"}</td>
-                                                    <td className="px-5 py-3.5 text-gray-300 font-mono text-xs whitespace-nowrap">{row.year || "—"}</td>
-                                                    <td className="px-5 py-3.5 text-white font-medium text-xs whitespace-nowrap">{row.product_name || row.product || "—"}</td>
-                                                    <td className="px-5 py-3.5 text-gray-300 font-mono text-xs whitespace-nowrap">{row.quantity || "—"}</td>
-                                                    <td className="px-5 py-3.5 text-gray-300 font-mono text-xs whitespace-nowrap">{row.price || "—"}</td>
-                                                    <td className="px-5 py-3.5 text-gray-300 font-mono text-xs whitespace-nowrap">{row.total || "—"}</td>
-                                                    <td className="px-5 py-3.5 whitespace-nowrap">
-                                                        <button className="flex items-center gap-1.5 text-xs text-indigo-400 hover:text-indigo-300 transition-colors">
-                                                            <PencilLine size={13} />
-                                                            Edit
-                                                        </button>
-                                                    </td>
+
+                                                    {editingRowId === row.id ? (
+                                                        // ── Edit mode ──
+                                                        <>
+                                                            <td className="px-3 py-2">
+                                                                <input
+                                                                    className="w-full bg-gray-800 border border-indigo-500 rounded px-2 py-1 text-xs text-white font-mono"
+                                                                    value={editValues.date}
+                                                                    onChange={e => setEditValues(p => ({ ...p, date: e.target.value }))}
+                                                                />
+                                                            </td>
+                                                            <td className="px-3 py-2">
+                                                                <input
+                                                                    className="w-full bg-gray-800 border border-indigo-500 rounded px-2 py-1 text-xs text-white"
+                                                                    value={editValues.month}
+                                                                    onChange={e => setEditValues(p => ({ ...p, month: e.target.value }))}
+                                                                />
+                                                            </td>
+                                                            <td className="px-3 py-2">
+                                                                <input
+                                                                    className="w-full bg-gray-800 border border-indigo-500 rounded px-2 py-1 text-xs text-white font-mono"
+                                                                    value={editValues.year}
+                                                                    onChange={e => setEditValues(p => ({ ...p, year: e.target.value }))}
+                                                                />
+                                                            </td>
+                                                            <td className="px-3 py-2">
+                                                                <input
+                                                                    className="w-full bg-gray-800 border border-indigo-500 rounded px-2 py-1 text-xs text-white"
+                                                                    value={editValues.product}
+                                                                    onChange={e => setEditValues(p => ({ ...p, product: e.target.value }))}
+                                                                />
+                                                            </td>
+                                                            <td className="px-3 py-2">
+                                                                <input
+                                                                    className="w-full bg-gray-800 border border-indigo-500 rounded px-2 py-1 text-xs text-white font-mono"
+                                                                    value={editValues.quantity}
+                                                                    onChange={e => setEditValues(p => ({ ...p, quantity: e.target.value }))}
+                                                                />
+                                                            </td>
+                                                            <td className="px-3 py-2">
+                                                                <input
+                                                                    className="w-full bg-gray-800 border border-indigo-500 rounded px-2 py-1 text-xs text-white font-mono"
+                                                                    value={editValues.price}
+                                                                    onChange={e => setEditValues(p => ({ ...p, price: e.target.value }))}
+                                                                />
+                                                            </td>
+                                                            <td className="px-3 py-2">
+                                                                <input
+                                                                    className="w-full bg-gray-800 border border-indigo-500 rounded px-2 py-1 text-xs text-white font-mono"
+                                                                    value={editValues.total}
+                                                                    onChange={e => setEditValues(p => ({ ...p, total: e.target.value }))}
+                                                                />
+                                                            </td>
+                                                            <td className="px-3 py-2 whitespace-nowrap">
+                                                                <div className="flex gap-3">
+                                                                    <button
+                                                                        onClick={() => handleEditSave(row)}
+                                                                        className="text-xs text-green-400 hover:text-green-300 transition-colors"
+                                                                    >
+                                                                        ✓ Save
+                                                                    </button>
+                                                                    <button
+                                                                        onClick={handleEditCancel}
+                                                                        className="text-xs text-gray-400 hover:text-white transition-colors"
+                                                                    >
+                                                                        ✕ Cancel
+                                                                    </button>
+                                                                </div>
+                                                            </td>
+                                                        </>
+                                                    ) : (
+                                                        // Display mode
+                                                        <>
+                                                            <td className="px-5 py-3.5 text-gray-300 font-mono text-xs whitespace-nowrap">{row.date || "—"}</td>
+                                                            <td className="px-5 py-3.5 text-gray-300 text-xs whitespace-nowrap">{row.month || "—"}</td>
+                                                            <td className="px-5 py-3.5 text-gray-300 font-mono text-xs whitespace-nowrap">{row.year || "—"}</td>
+                                                            <td className="px-5 py-3.5 text-white font-medium text-xs whitespace-nowrap">{row.product_name || row.product || "—"}</td>
+                                                            <td className="px-5 py-3.5 text-gray-300 font-mono text-xs whitespace-nowrap">{row.quantity || "—"}</td>
+                                                            <td className="px-5 py-3.5 text-gray-300 font-mono text-xs whitespace-nowrap">{row.price || "—"}</td>
+                                                            <td className="px-5 py-3.5 text-gray-300 font-mono text-xs whitespace-nowrap">{row.total || "—"}</td>
+                                                            <td className="px-5 py-3.5 whitespace-nowrap">
+                                                                <div className="flex gap-4">
+
+                                                                    {/* for critical table */}
+                                                                    {activeCard === "critical" && (
+                                                                        <>
+                                                                            <button 
+                                                                                onClick={() => handleEditStart(row)}
+                                                                                className="flex items-center gap-1.5 text-xs text-indigo-400 hover:text-indigo-300 transition-colors">
+                                                                                <PencilLine size={13} />
+                                                                                Edit
+                                                                            </button>
+                                                                            <button className="flex items-center gap-1.5 text-xs text-red-400 hover:text-red-300 transition-colors">
+                                                                                <Trash2 size={13} />
+                                                                                Delete
+                                                                            </button>
+                                                                        </>    
+                                                                    )}
+
+                                                                    {/* for warning table */}
+                                                                    {activeCard === "warning" && (
+                                                                        <>
+                                                                            <button 
+                                                                                onClick={() => handleEditStart(row)}
+                                                                                className="flex items-center gap-1.5 text-xs text-yellow-400 hover:text-yellow-300 transition-colors">
+                                                                                <PencilLine size={13} />
+                                                                                Edit
+                                                                            </button>
+                                                                            <button className="flex items-center gap-1.5 text-xs text-indigo-400 hover:text-indigo-300 transition-colors">
+                                                                                ↗   Auto Complete
+                                                                            </button>
+                                                                            <button className="flex items-center gap-1.5 text-xs text-red-400 hover:text-red-300 transition-colors">
+                                                                                <Trash2 size={13} />
+                                                                                Delete
+                                                                            </button>
+
+                                                                        </>    
+                                                                    )}
+
+
+                                                                    {/* for info table */}
+                                                                    {activeCard === "info" && (
+                                                                        <>
+                                                                            <button className="text-xs text-emerald-400 hover:text-emerald-300 transition-colors">
+                                                                                ✓ Confirm
+                                                                            </button>
+                                                                            <button
+                                                                                onClick={() => handleEditStart(row)}
+                                                                                className="text-xs text-indigo-400 hover:text-indigo-300 transition-colors flex items-center gap-1"
+                                                                            >
+                                                                                <PencilLine size={12} /> Edit
+                                                                            </button>
+                                                                        </>
+                                                                    )}
+
+
+                                                                </div>
+                                                            </td>
+                                                        </>
+                                                    )}
                                                 </tr>
                                             ))}
                                         </tbody>
                                     </table>
-                                </div>
+                                </div>    
                             )}
+
+
+                            
                         </div>
 
                         {/* ── Action Buttons ── */}
+
                         <div className="flex flex-wrap gap-3 pt-2 border-t border-gray-800">
                             <button className="px-5 py-2 rounded-lg text-sm font-medium bg-indigo-600 hover:bg-indigo-500 text-white transition-colors">
                                 Confirm

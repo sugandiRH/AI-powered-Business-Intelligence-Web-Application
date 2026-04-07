@@ -200,7 +200,7 @@ function UploadPage() {
                     <div className="p-4 text-xl font-bold border-b border-gray-700">Data Talk</div>
                     <div className="p-4 space-y-3">
                         {/* Dashboard */}
-                        <div className="flex items-center space-x-3 hover:bg-gray-800 p-2 rounded cursor-pointer" onClick={() => navigate("/")}> 
+                        <div className="flex items-center space-x-3 hover:bg-gray-800 p-2 rounded cursor-pointer" onClick={() => navigate("/dashboard")}> 
                             <LayoutDashboard size={20} />
                             {isSidebarOpen && <span>Dashboard</span>}
                         </div>

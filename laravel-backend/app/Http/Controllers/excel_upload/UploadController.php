@@ -75,7 +75,7 @@ class UploadController extends Controller
 
             // handle response from python server after processing file
             if ($response->successful()) {
-                $dataset->status = 'completed';
+                $dataset->status = 'Start Review';
                 $dataset->save();
                 return response()->json([
                     'message' => 'File uploaded and processed successfully',

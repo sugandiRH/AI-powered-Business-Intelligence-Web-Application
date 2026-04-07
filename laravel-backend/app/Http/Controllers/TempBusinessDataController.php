@@ -85,6 +85,7 @@ class TempBusinessDataController extends Controller
     {
         $data = TempBusinessDataSample::where('dataset_id', $datasetId)
             ->where('error_level', 'info')
+            ->whereNull('validation_errors')
             ->select([
                 'date',
                 'month',

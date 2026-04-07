@@ -41,6 +41,30 @@ SEVERITY_MAP : dict[str, int] = {
     
 }
 
+USER_MESSAGES: dict[str, str] = {
+    "invalid_quantity":    "Quantity is missing or zero — please enter a valid quantity.",
+    "invalid_price":       "Price is missing or zero — please enter a valid price.",
+    "missing_product":     "Product name is missing — this field is required.",
+    "unresolvable_row":    "Cannot determine quantity, price, or total — at least two of these are needed.",
+    "invalid_date":        "Date is missing, in the future, or before the allowed minimum date.",
+    "invalid_month":       "Month is not a valid value (expected 1–12 or a month name).",
+    "invalid_year":        "Year is missing or outside the valid range.",
+    "month_date_mismatch": "The month column doesn't match the month in the date column.",
+    "year_date_mismatch":  "The year column doesn't match the year in the date column.",
+    "price_inconsistency": "This product has different prices across rows — please confirm which is correct.",
+    "price_outlier":       "Price looks unusually high or low compared to other rows for this product.",
+    "quantity_outlier":    "Quantity looks unusually high or low compared to other rows for this product.",
+    "missing_category":    "Category is missing — assigning a category improves reporting.",
+    "duplicate_row":       "This row appears to be a duplicate of another row in this upload.",
+    "date_period_outlier": "This date is far from the period of most other rows — please confirm it is correct.",
+    "total_mismatch":      "Total doesn't exactly match quantity × price.",
+    "derived_month":       "Month was not provided — filled automatically from the date column.",
+    "derived_year":        "Year was not provided — filled automatically from the date column.",
+    "derived_total":       "Total was not provided — calculated as quantity × price.",
+    "derived_quantity":    "Quantity was not provided — calculated as total ÷ price.",
+    "derived_price":       "Price was not provided — calculated as total ÷ quantity.",
+}
+
 
 
 OUTLIER_MIN_GROUP_SIZE         = 2
@@ -245,11 +269,14 @@ def validate_time(df: pd.DataFrame) -> pd.DataFrame:
                 lambda x: int(x) if str(x).lstrip('-').isdigit() else None
             ))
         )
+        # add suggestion to fix month if date is valid
+        df.loc[month_mismatch, "suggested_month"] = df.loc[month_mismatch, "date"].dt.month
         _add_error(df, month_mismatch, "month_date_mismatch")
 
     if has_date and has_year:
         valid = df["date"].notna() & df["year"].notna()
         mismatch = valid & (df["date"].dt.year != df["year"])
+        df.loc[mismatch, "suggested_year"] = df.loc[mismatch, "date"].dt.year
         _add_error(df, mismatch, "year_date_mismatch")    
 
     _add_error(df, df["category"].isna(), "missing_category")   
@@ -306,6 +333,7 @@ def validate_business(df: pd.DataFrame) -> pd.DataFrame:
     all_present = df["quantity"].notna() & df["price"].notna() & df["total"].notna()
     calculated  = df["quantity"] * df["price"]
     mismatch    = all_present & ((calculated - df["total"]).abs() > TOTAL_TOLERANCE)
+    df.loc[mismatch, "suggested_total"] = calculated[mismatch]
     _add_error(df, mismatch, "total_mismatch")
 
     # if df["product"].notna().any():
@@ -424,6 +452,7 @@ def build_review_queue(df: pd.DataFrame) -> list[dict]:
                 requires_fix = True
             issues.append({
                 "code":      code,
+                "message":   USER_MESSAGES.get(code, f"Unknown issue: {code}"),
                 "level":     level,
                 "needs_fix": level == CRITICAL,
             })
