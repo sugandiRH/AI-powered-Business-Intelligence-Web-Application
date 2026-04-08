@@ -11,6 +11,7 @@ class TempBusinessDataController extends Controller
     {
         $data = TempBusinessDataSample::where('dataset_id', $datasetId)
             ->select([
+                'id',
                 'date',
                 'month',
                 'year',
@@ -34,6 +35,7 @@ class TempBusinessDataController extends Controller
         $data = TempBusinessDataSample::where('dataset_id', $datasetId)
             ->where('error_level', 'critical')
             ->select([
+                'id',
                 'date',
                 'month',
                 'year',
@@ -44,6 +46,7 @@ class TempBusinessDataController extends Controller
                 'total',
                 'validation_errors',
                 'error_level',
+                'suggested_total',
             ])
             ->get();
 
@@ -60,6 +63,7 @@ class TempBusinessDataController extends Controller
         $data = TempBusinessDataSample::where('dataset_id', $datasetId)
             ->where('error_level', 'warning')
             ->select([
+                'id',
                 'date',
                 'month',
                 'year',
@@ -84,9 +88,13 @@ class TempBusinessDataController extends Controller
     public function getInfoRowByDatasetId($datasetId)
     {
         $data = TempBusinessDataSample::where('dataset_id', $datasetId)
-            ->where('error_level', 'info')
-            ->whereNull('validation_errors')
+            ->where(function ($query) {
+                $query->where('is_valid', true)
+                    ->orWhere('error_level', 'info');
+            })
+            
             ->select([
+                'id',
                 'date',
                 'month',
                 'year',
@@ -107,5 +115,62 @@ class TempBusinessDataController extends Controller
             'total_info_rows' => $totalInfoRows
         ]);
     }
+
+    public function deleteRowById(Request $request)
+    {
+        $row = TempBusinessDataSample::find($request-> input('row_id'));
+
+        if (!$row) {
+            return response()->json(['message' => 'Row not found'], 404);
+        }
+
+        $row->delete();
+
+        return response()->json(['message' => 'Row deleted successfully']);
+    }
+
+
+    public function updateRowById(Request $request)
+    {
+        $row = TempBusinessDataSample::find($request-> input('row_id'));
+
+        if (!$row) {
+            return response()->json(['message' => 'Row not found'], 404);
+        }
+
+        // Update the row with new values
+        $row-> update([
+            'date' => $request->input('date'),
+            'month' => $request->input('month'),
+            'year' => $request->input('year'),
+            'product' => $request->input('product'),
+            'category' => $request->input('category'),
+            'quantity' => $request->input('quantity'),
+            'price' => $request->input('price'),
+            'total' => $request->input('total'),
+            'error_level' => 'info', 
+            'user_confirmed' => true,
+        ]);
+
+        return response()->json(['message' => 'Row updated successfully']);
+    }
+
+
+    public function confirmRowById(Request $request)
+    {
+        $row = TempBusinessDataSample::find($request-> input('row_id'));
+
+        if (!$row) {
+            return response()->json(['message' => 'Row not found'], 404);
+        }
+
+        $row->update([
+            'user_confirmed' => true,
+            'error_level' => 'info',
+        ]);
+
+        return response()->json(['message' => 'Dataset confirmed successfully']);
+    }
+    
 
 }

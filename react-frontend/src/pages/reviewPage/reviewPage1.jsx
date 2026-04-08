@@ -167,7 +167,7 @@ function ReviewPage() {
             },
         },
 
-        // valid
+        // Info & valid
         {
             key: "info",
             label: "Valid",
@@ -204,6 +204,7 @@ function ReviewPage() {
 
     const handleEditStart = (row) => {
         setEditingRowId(row.id);
+        
         setEditValues({
             date:     row.date     || "",
             month:    row.month    || "",
@@ -216,19 +217,36 @@ function ReviewPage() {
         });
     };
 
+
+    // for sucess message
+    const [toast, setToast] = useState(null); 
+
+    const showToast = (message, type = 'success') => {
+        setToast({ message, type });
+        setTimeout(() => setToast(null), 3000);
+    };
+
+
+    // this is for save button in table after edit
     const handleEditSave = async (row) => {
         try {
-            await api.put(`/temp_business_data_sample/${row.id}`, editValues);
+            await api.post(`/update_temp_data`, {
+                row_id: row.id,
+                ...editValues
+            });
             // Update local state so table reflects change immediately
             setData(prev => ({
                 ...prev,
-                [activeCard]: prev[activeCard].map(r =>
-                    r.id === row.id ? { ...r, ...editValues } : r
-                )
+                [activeCard]: prev[activeCard].filter(r => Number(r.id) !== Number(row.id)),
+                // Move updated row to info/valid section
+                info: [...prev.info, { ...row, ...editValues, user_confirmed: true }]
             }));
             setEditingRowId(null);
+            showToast('Row updated and moved to Valid ✓');
+
         } catch (err) {
             console.error("Save failed", err);
+            showToast('Failed to save row', 'error');
         }
     };
 
@@ -236,6 +254,80 @@ function ReviewPage() {
         setEditingRowId(null);
         setEditValues({});
     };
+
+    // this is for delete button in table
+    const [deleteConfirm, setDeleteConfirm] = useState(null);
+
+    const handleDelete = async () => {
+        if (!deleteConfirm) return;
+        try {
+            // await api.post('/delete_temp_data', { row_id: row.id });
+            await api.post('/delete_temp_data', { row_id: deleteConfirm.id });
+            // Update local state so table reflects change immediately
+            setData(prev => ({
+                ...prev,
+                [activeCard]: prev[activeCard].filter(r => Number(r.id) !== Number(deleteConfirm.id))
+            }));
+            setDeleteConfirm(null);
+        } catch (err) {
+            console.error("Delete failed", err);
+        }
+    };
+
+    const handleConfirm = async (row) => {
+        try {
+            await api.post('/confirm_temp_data', { row_id: row.id });
+            setData(prev => ({
+                ...prev,
+                [activeCard]: prev[activeCard].filter(r => Number(r.id) !== Number(row.id)),
+                info: [...prev.info, { ...row, user_confirmed: true }]
+            }));
+            showToast('Row confirmed successfully');
+        } catch (err) {
+            console.error("Confirm failed", err);
+            showToast('Failed to confirm row', 'error');
+        }
+    };
+
+    const [errorMessages, setErrorMessages] = useState({});
+
+    useEffect(() => {
+        fetch("/error_messages")
+            .then(res => res.json())
+            .then(setErrorMessages)
+            .catch(() => setErrorMessages({}));
+    }, []);
+
+
+    // this for show warning correction suggestion from ai table
+    const [warningSuggestions, setWarningSuggestions] = useState([]);
+    const [showSuggestions, setShowSuggestions] = useState(false);
+    const [autoCompleteLoading, setAutoCompleteLoading] = useState(false);
+
+    const handleAutoComplete = async () => {
+        setAutoCompleteLoading(true);
+        try {
+            // await api.post('/warning_suggestions', { dataset_id: datasetId });
+
+            // const res = await api.get(`/warning_suggestions/${datasetId}`);
+            const res = await api.post('/auto_complete_warnings', { 
+                dataset_id: datasetId 
+            });
+
+            // console.log("response:", res.data);
+            // console.log("suggestions:", res.data.suggestions);
+            // console.log("suggestions length:", res.data.suggestions?.length);
+
+            setWarningSuggestions(res.data.suggestions || []);
+            setShowSuggestions(true);
+
+        } catch (err) {
+            console.error("Auto complete failed", err);
+        } finally {
+            setAutoCompleteLoading(false);
+        }
+    };
+
 
 
     return (
@@ -393,6 +485,8 @@ function ReviewPage() {
                                         </thead>
                                         <tbody className="divide-y divide-gray-800">
                                             {activeRows.map((row, index) => (
+
+                                                // this is ai suggestion table
                                                 <tr key={index} className="transition-colors hover:bg-purple-500/5">
                                                     {/* Column name badge */}
                                                     <td className="px-5 py-3.5 whitespace-nowrap">
@@ -457,18 +551,21 @@ function ReviewPage() {
                                     <table className="w-full text-sm">
                                         <thead>
                                             <tr className="border-b border-gray-700/60 bg-gray-800/60">
-                                                {["Date", "Month", "Year", "Product Name", "Quantity", "Price", "Total", "Actions"].map(h => (
+                                                {["Date", "Month", "Year", "Product Name", "Category", "Quantity", "Price", "Total", "Errors", "Actions"].map(h => (
                                                     <th key={h} className="px-5 py-3 text-left text-xs font-semibold text-gray-400 uppercase tracking-wider whitespace-nowrap">
                                                         {h}
                                                     </th>
                                                 ))}
                                             </tr>
                                         </thead>
-                                        <tbody className="divide-y divide-gray-800">
-                                            {activeRows.map((row, index) => (
-                                                <tr key={index} className={`transition-colors ${activeCfg.rowHover}`}>
 
-                                                    {editingRowId === row.id ? (
+                                        {/* other table - excel columns representation */}
+                                        <tbody className="divide-y divide-gray-800">
+                                            {/* {activeRows.length > 0 && console.log("first row:", activeRows[0])} */}
+                                            {activeRows.map((row, index) => (
+                                                <tr key={row.id} className={`transition-colors ${activeCfg.rowHover}`}>
+
+                                                    {editingRowId === Number(row.id) ? (
                                                         // ── Edit mode ──
                                                         <>
                                                             <td className="px-3 py-2">
@@ -501,6 +598,13 @@ function ReviewPage() {
                                                             </td>
                                                             <td className="px-3 py-2">
                                                                 <input
+                                                                    className="w-full bg-gray-800 border border-indigo-500 rounded px-2 py-1 text-xs text-white"
+                                                                    value={editValues.category}
+                                                                    onChange={e => setEditValues(p => ({ ...p, category: e.target.value }))}
+                                                                />
+                                                            </td>
+                                                            <td className="px-3 py-2">
+                                                                <input
                                                                     className="w-full bg-gray-800 border border-indigo-500 rounded px-2 py-1 text-xs text-white font-mono"
                                                                     value={editValues.quantity}
                                                                     onChange={e => setEditValues(p => ({ ...p, quantity: e.target.value }))}
@@ -520,6 +624,7 @@ function ReviewPage() {
                                                                     onChange={e => setEditValues(p => ({ ...p, total: e.target.value }))}
                                                                 />
                                                             </td>
+                                                            <td className="px-5 py-3.5 text-gray-300 font-mono text-xs whitespace-nowrap">{row.validation_errors || "—"}</td>
                                                             <td className="px-3 py-2 whitespace-nowrap">
                                                                 <div className="flex gap-3">
                                                                     <button
@@ -544,9 +649,11 @@ function ReviewPage() {
                                                             <td className="px-5 py-3.5 text-gray-300 text-xs whitespace-nowrap">{row.month || "—"}</td>
                                                             <td className="px-5 py-3.5 text-gray-300 font-mono text-xs whitespace-nowrap">{row.year || "—"}</td>
                                                             <td className="px-5 py-3.5 text-white font-medium text-xs whitespace-nowrap">{row.product_name || row.product || "—"}</td>
+                                                            <td className="px-5 py-3.5 text-gray-300 text-xs whitespace-nowrap">{row.category || "—"}</td>
                                                             <td className="px-5 py-3.5 text-gray-300 font-mono text-xs whitespace-nowrap">{row.quantity || "—"}</td>
                                                             <td className="px-5 py-3.5 text-gray-300 font-mono text-xs whitespace-nowrap">{row.price || "—"}</td>
                                                             <td className="px-5 py-3.5 text-gray-300 font-mono text-xs whitespace-nowrap">{row.total || "—"}</td>
+                                                            <td className="px-5 py-3.5 text-gray-300 font-mono text-xs whitespace-nowrap">{row.validation_errors || "—"}</td>
                                                             <td className="px-5 py-3.5 whitespace-nowrap">
                                                                 <div className="flex gap-4">
 
@@ -559,7 +666,9 @@ function ReviewPage() {
                                                                                 <PencilLine size={13} />
                                                                                 Edit
                                                                             </button>
-                                                                            <button className="flex items-center gap-1.5 text-xs text-red-400 hover:text-red-300 transition-colors">
+                                                                            <button 
+                                                                                onClick={() => setDeleteConfirm(row)}
+                                                                                className="flex items-center gap-1.5 text-xs text-red-400 hover:text-red-300 transition-colors">
                                                                                 <Trash2 size={13} />
                                                                                 Delete
                                                                             </button>
@@ -575,10 +684,17 @@ function ReviewPage() {
                                                                                 <PencilLine size={13} />
                                                                                 Edit
                                                                             </button>
-                                                                            <button className="flex items-center gap-1.5 text-xs text-indigo-400 hover:text-indigo-300 transition-colors">
-                                                                                ↗   Auto Complete
+                                                                            {/* <button className="flex items-center gap-1.5 text-xs text-indigo-400 hover:text-indigo-300 transition-colors">
+                                                                                ↗ Auto
+                                                                            </button> */}
+                                                                            <button 
+                                                                                onClick={() => handleConfirm(row)}
+                                                                                className="text-xs text-emerald-400 hover:text-emerald-300 transition-colors">
+                                                                                ✓ Confirm
                                                                             </button>
-                                                                            <button className="flex items-center gap-1.5 text-xs text-red-400 hover:text-red-300 transition-colors">
+                                                                            <button 
+                                                                                onClick={() => setDeleteConfirm(row)}
+                                                                                className="flex items-center gap-1.5 text-xs text-red-400 hover:text-red-300 transition-colors">
                                                                                 <Trash2 size={13} />
                                                                                 Delete
                                                                             </button>
@@ -590,14 +706,17 @@ function ReviewPage() {
                                                                     {/* for info table */}
                                                                     {activeCard === "info" && (
                                                                         <>
-                                                                            <button className="text-xs text-emerald-400 hover:text-emerald-300 transition-colors">
-                                                                                ✓ Confirm
-                                                                            </button>
                                                                             <button
                                                                                 onClick={() => handleEditStart(row)}
                                                                                 className="text-xs text-indigo-400 hover:text-indigo-300 transition-colors flex items-center gap-1"
                                                                             >
                                                                                 <PencilLine size={12} /> Edit
+                                                                            </button>
+                                                                            <button 
+                                                                                onClick={() => setDeleteConfirm(row)}
+                                                                                className="flex items-center gap-1.5 text-xs text-red-400 hover:text-red-300 transition-colors">
+                                                                                <Trash2 size={13} />
+                                                                                Delete
                                                                             </button>
                                                                         </>
                                                                     )}
@@ -613,6 +732,67 @@ function ReviewPage() {
                                     </table>
                                 </div>    
                             )}
+                            {/* this is ai suggetion table - only display when click auto complete */}
+                            {/* ── Warning Suggestions Table ── */}
+                            {activeCard === "warning" && showSuggestions && warningSuggestions.length > 0 && (
+                                <div className="mt-6">
+                                    <div className="flex items-center gap-2.5 mb-3">
+                                        <span className="w-2 h-2 rounded-full bg-indigo-500" />
+                                        <h3 className="text-sm font-semibold text-indigo-400">
+                                            AI Suggestions for Warning Rows
+                                        </h3>
+                                        <span className="text-xs text-gray-500">— {warningSuggestions.length} suggestions</span>
+                                    </div>
+
+                                    <div className="overflow-x-auto rounded-xl border border-indigo-700/40 bg-gray-900">
+                                        <table className="w-full text-sm">
+                                            <thead>
+                                                <tr className="border-b border-gray-700/60 bg-gray-800/60">
+                                                    {["Product", "Field", "Original", "Suggested", "Actions"].map(h => (
+                                                        <th key={h} className="px-5 py-3 text-left text-xs font-semibold text-gray-400 uppercase tracking-wider whitespace-nowrap">
+                                                            {h}
+                                                        </th>
+                                                    ))}
+                                                </tr>
+                                            </thead>
+                                            <tbody className="divide-y divide-gray-800">
+                                                {warningSuggestions.map((row, index) => (
+                                                    <tr key={index} className="hover:bg-indigo-500/5 transition-colors">
+                                                        <td className="px-5 py-3.5 text-white text-xs font-medium">{row.product}</td>
+                                                        <td className="px-5 py-3.5">
+                                                            <span className="px-2 py-0.5 rounded text-xs font-medium bg-indigo-500/20 text-indigo-400">
+                                                                {row.field}
+                                                            </span>
+                                                        </td>
+                                                        <td className="px-5 py-3.5 text-gray-400 text-xs font-mono line-through decoration-red-400/60">
+                                                            {row.original_value ?? "—"}
+                                                        </td>
+                                                        <td className="px-5 py-3.5 text-green-400 text-xs font-mono font-medium">
+                                                            {row.suggested_value ?? "—"}
+                                                        </td>
+                                                        <td className="px-5 py-3.5 whitespace-nowrap">
+                                                            <div className="flex gap-3">
+                                                                <button
+                                                                    onClick={() => handleAcceptSuggestion(row)}
+                                                                    className="text-xs text-green-400 hover:text-green-300 transition-colors"
+                                                                >
+                                                                    ✓ Accept
+                                                                </button>
+                                                                <button
+                                                                    onClick={() => handleRejectSuggestion(row)}
+                                                                    className="text-xs text-red-400 hover:text-red-300 transition-colors"
+                                                                >
+                                                                    ✕ Reject
+                                                                </button>
+                                                            </div>
+                                                        </td>
+                                                    </tr>
+                                                ))}
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                </div>
+                            )}
 
 
                             
@@ -621,20 +801,130 @@ function ReviewPage() {
                         {/* ── Action Buttons ── */}
 
                         <div className="flex flex-wrap gap-3 pt-2 border-t border-gray-800">
-                            <button className="px-5 py-2 rounded-lg text-sm font-medium bg-indigo-600 hover:bg-indigo-500 text-white transition-colors">
-                                Confirm
-                            </button>
-                            <button className="px-5 py-2 rounded-lg text-sm font-medium bg-gray-800 hover:bg-gray-700 text-gray-200 border border-gray-700 transition-colors">
-                                Ask AI ↗
-                            </button>
+                           
+
+                            {/* only for critical data */}
+                            {activeCard === "critical" && (
+                                <>
+                                    <button className="px-5 py-2 rounded-lg text-sm font-medium bg-red-600 hover:bg-red-500 text-white transition-colors flex items-center gap-2">
+                                        <Trash2 size={14} /> Delete All Critical
+                                    </button>
+                                </>
+                            )}
+
+                            {/* only for warning data */}
+                            {activeCard === "warning" && (
+                                <>
+                                    <button 
+                                        onClick={handleAutoComplete}
+                                        disabled={autoCompleteLoading}
+                                        className="px-5 py-2 rounded-lg text-sm font-medium bg-indigo-600 hover:bg-indigo-500 text-white transition-colors"
+                                    >
+                                        {/* ↗ Auto Complete All */}
+                                        {autoCompleteLoading ? "Processing..." : "↗ Auto Complete All"}
+                                    </button>
+                                    <button className="px-5 py-2 rounded-lg text-sm font-medium bg-yellow-600 hover:bg-yellow-500 text-white transition-colors">
+                                        ✓ Confirm All Warnings
+                                    </button>
+                                </>
+                            )}
+
+                            {/* info — confirm all valid rows */}
+                            {activeCard === "info" && (
+                                <>
+                                    <button className="px-5 py-2 rounded-lg text-sm font-medium bg-emerald-600 hover:bg-emerald-500 text-white transition-colors">
+                                        ✓ Confirm All
+                                    </button>
+                                </>
+                            )}
+
+                            {/* ai_suggestions — accept or reject all */}
+                            {activeCard === "ai_suggestions" && (
+                                <>
+                                    <button className="px-5 py-2 rounded-lg text-sm font-medium bg-purple-600 hover:bg-purple-500 text-white transition-colors">
+                                        ✓ Accept All
+                                    </button>
+                                    <button className="px-5 py-2 rounded-lg text-sm font-medium bg-gray-800 hover:bg-gray-700 text-gray-200 border border-gray-700 transition-colors">
+                                        ✕ Reject All
+                                    </button>
+                                </>
+                            )}
+
+                            {/* for all */}
                             <button
                                 onClick={() => navigate(-1)}
                                 className="ml-auto px-5 py-2 rounded-lg text-sm font-medium text-gray-400 hover:text-white border border-gray-700 hover:border-gray-500 bg-transparent transition-colors"
                             >
                                 ← Go back
                             </button>
+                            
                         </div>
                     </div>
+
+                    {/* ── Toast Notification ── */}
+                    {toast && (
+                        <div className={`fixed bottom-6 right-6 z-50 flex items-center gap-3 px-4 py-3 rounded-xl shadow-2xl border transition-all duration-300 ${
+                            toast.type === 'success'
+                                ? 'bg-gray-900 border-emerald-500/40 text-emerald-400'
+                                : 'bg-gray-900 border-red-500/40 text-red-400'
+                        }`}>
+                            <span className="text-sm font-medium">{toast.message}</span>
+                            <button
+                                onClick={() => setToast(null)}
+                                className="text-gray-500 hover:text-white transition-colors text-xs"
+                            >
+                                ✕
+                            </button>
+                        </div>
+                    )}
+
+                    {/* ── Delete Confirmation Modal ── */}
+                    {deleteConfirm && (
+                        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm">
+                            <div className="bg-gray-900 border border-gray-700 rounded-2xl p-6 w-full max-w-sm shadow-2xl">
+                                
+                                {/* Icon */}
+                                <div className="flex items-center justify-center w-12 h-12 rounded-full bg-red-500/10 border border-red-500/30 mx-auto mb-4">
+                                    <Trash2 size={20} className="text-red-400" />
+                                </div>
+
+                                {/* Text */}
+                                <h3 className="text-white text-base font-semibold text-center mb-1">
+                                    Delete this row?
+                                </h3>
+                                <p className="text-gray-400 text-xs text-center mb-1">
+                                    This action cannot be undone.
+                                </p>
+
+                                {/* Row preview */}
+                                <div className="bg-gray-800 rounded-lg px-4 py-2 mb-5 text-center">
+                                    <p className="text-xs text-gray-400">
+                                        <span className="text-white font-medium">
+                                            {deleteConfirm.product || "—"}
+                                        </span>
+                                        {" · "}{deleteConfirm.date || "—"}
+                                    </p>
+                                </div>
+
+                                {/* Buttons */}
+                                <div className="flex gap-3">
+                                    <button
+                                        onClick={() => setDeleteConfirm(null)}
+                                        className="flex-1 px-4 py-2 rounded-lg text-sm font-medium bg-gray-800 hover:bg-gray-700 text-gray-300 border border-gray-700 transition-colors"
+                                    >
+                                        Cancel
+                                    </button>
+                                    <button
+                                        onClick={handleDelete}
+                                        className="flex-1 px-4 py-2 rounded-lg text-sm font-medium bg-red-600 hover:bg-red-500 text-white transition-colors"
+                                    >
+                                        Yes, Delete
+                                    </button>
+                                </div>
+
+                            </div>
+                        </div>
+                    )}
                 </div>
             </div>    
             
