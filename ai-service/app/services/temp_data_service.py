@@ -1,8 +1,11 @@
 # from app.models.temp_business_data import TempBusinessData
 from app.models.temp_business_data_sample import TempBusinessDataSample
 from sqlalchemy import text
+import pandas as pd
 
 def save_temp_data(df, dataset_id, db):
+
+    df = df.astype(object).where(pd.notnull(df), None)
 
     db.execute(
         text("DELETE FROM temp_business_data_sample WHERE dataset_id = :dataset_id"),

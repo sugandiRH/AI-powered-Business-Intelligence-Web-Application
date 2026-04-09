@@ -265,9 +265,7 @@ def validate_time(df: pd.DataFrame) -> pd.DataFrame:
         month_mismatch = (
             df["date"].notna() &
             df["month"].notna() &
-            (df["date"].dt.month != df["month"].apply(
-                lambda x: int(x) if str(x).lstrip('-').isdigit() else None
-            ))
+            (df["date"].dt.month != df["month"].apply(_safe_int_month))
         )
         # add suggestion to fix month if date is valid
         df.loc[month_mismatch, "suggested_month"] = df.loc[month_mismatch, "date"].dt.month

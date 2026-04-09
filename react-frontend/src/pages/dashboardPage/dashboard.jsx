@@ -73,6 +73,12 @@ function Dashboard() {
         }
     };
 
+    const viewDataSet = (id, stats) => {
+        if (stats=== "Start Review") {
+            navigate(`/review1/${id}`);
+        }
+    }
+
     return (
         <div className="min-h-screen bg-slate-950 text-white overflow-hidden">
                         
@@ -89,7 +95,9 @@ function Dashboard() {
 
                     <div className="p-4 space-y-3">
                     {/* Dashboard */}
-                    <div className="flex items-center space-x-3 hover:bg-gray-800 p-2 rounded cursor-pointer">
+                    <div className="flex items-center space-x-3 hover:bg-gray-800 p-2 rounded cursor-pointer"
+                        onClick={() => navigate("/dashboard")}
+                    >
                         <LayoutDashboard size={20} />
                         {isSidebarOpen && <span>Dashboard</span>}
                     </div>
@@ -233,6 +241,8 @@ function Dashboard() {
                                                                 ? "bg-green-600"
                                                                 : dataset.status === "processing"
                                                                 ? "bg-yellow-600"
+                                                                : dataset.status === "Start Review"
+                                                                ? "bg-blue-600"
                                                                 : "bg-red-600"
                                                         }`}
                                                     >
@@ -240,8 +250,8 @@ function Dashboard() {
                                                     </span>
                                                 </td>
                                                 <td className="px-4 py-2 flex space-x-2">
-                                                    <Eye size={16} className="cursor-pointer" />
-                                                    <Trash2 size={16} className="cursor-pointer text-red-500" />
+                                                    <Eye size={16} className="cursor-pointer" onClick={() => viewDataSet(dataset.id, dataset.status)}/>
+                                                    <Trash2 size={16} className="cursor-pointer text-red-500" onClick={() => deleteDataSet(dataset.id)} />
                                                 </td>
                                             </tr>
                                         ))

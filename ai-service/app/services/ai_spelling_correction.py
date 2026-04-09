@@ -23,10 +23,13 @@ def correct_spelling( db, dataset_id ):
 
     for row in result:
         for col_name, val in [("product", row.product), ("category", row.category)]:
-           if not val:
-            continue
+            if not val:
+                continue
            
-        val_normalized = str(val).lower().strip()
+            val_normalized = str(val).lower().strip()
+
+        if val_normalized in SKIP_VALUES:
+            continue    
     
         if val_normalized in SKIP_VALUES or val_normalized not in seen:
             if val_normalized not in SKIP_VALUES:

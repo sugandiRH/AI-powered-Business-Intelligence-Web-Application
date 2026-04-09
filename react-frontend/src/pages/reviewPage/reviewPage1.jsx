@@ -274,6 +274,51 @@ function ReviewPage() {
         }
     };
 
+    // this is for delete all in critical table
+    const [deleteAllConfirm, setDeleteAllConfirm] = useState(false);
+    const handleDeleteAllCritical = async () => {
+        
+        try {
+            await api.post('/delete_all_critical_rows', { dataset_id: datasetId});
+
+            setData(prev => ({
+                ...prev,
+                critical: []
+            }));
+            setDeleteAllConfirm(false);
+            showToast('All critical rows deleted');
+
+        } catch (err) {
+            console.error("Delete all critical rows failed", err);
+            showToast('Failed to delete critical rows', 'error');
+            setDeleteAllConfirm(false);
+        }
+    };
+
+
+    // this is for confirm all in warning table
+    const [confirmAllWarningConfirm, setConfirmAllWarningConfirm] = useState(false);
+    const handleConfirmAllWarning = async () => {
+        try {
+            await api.post('/confirm_all_warning_rows', { dataset_id: datasetId});
+            const confirmedRows = data.warning.map(r => ({ ...r, user_confirmed: true, error_level: 'info' }));
+
+            setData(prev => ({
+                ...prev,
+                warning: [],
+                info: [...prev.info, ...prev.warning.map(r => ({ ...r, user_confirmed: true }))]
+            }));
+            setConfirmAllWarningConfirm(false);
+            showToast('All warning rows confirmed');
+        } catch (err) {
+            console.error("Confirm all warning rows failed", err);
+            showToast('Failed to confirm warning rows', 'error');
+            setConfirmAllWarningConfirm(false);
+
+        }
+    };
+
+    // this is warning table confirm button - move to info table
     const handleConfirm = async (row) => {
         try {
             await api.post('/confirm_temp_data', { row_id: row.id });
@@ -309,26 +354,125 @@ function ReviewPage() {
         try {
             // await api.post('/warning_suggestions', { dataset_id: datasetId });
 
-            // const res = await api.get(`/warning_suggestions/${datasetId}`);
+            //const res = await api.get(`/warning_suggestions/${datasetId}`);
             const res = await api.post('/auto_complete_warnings', { 
-                dataset_id: datasetId 
+                dataset_id: Number(datasetId)
             });
 
             // console.log("response:", res.data);
             // console.log("suggestions:", res.data.suggestions);
             // console.log("suggestions length:", res.data.suggestions?.length);
 
-            setWarningSuggestions(res.data.suggestions || []);
+            setWarningSuggestions(res.data.warning_rows || []);
             setShowSuggestions(true);
 
         } catch (err) {
             console.error("Auto complete failed", err);
+            showToast('Auto complete failed', 'error');
         } finally {
             setAutoCompleteLoading(false);
         }
     };
 
+    // accept suggest value from row in ai suggestion table
+    const handleAcceptSuggestion = async (row) => {
+        try {
+            await api.post('/confirm_ai_suggested_warning', {
+                row_id:   row.id,
+                month:    row.suggested_month    ?? row.month,
+                year:     row.suggested_year     ?? row.year,
+                category: row.suggested_category ?? row.category,
+                quantity: row.suggested_quantity ?? row.quantity,
+                price:    row.suggested_price    ?? row.price,
+                total:    row.suggested_total    ?? row.total,
+                date:     row.suggested_date     ?? row.date,
+                product:  row.product,
+            });
 
+            // Remove from suggestions table
+            setWarningSuggestions(prev => prev.filter(r => Number(r.id) !== Number(row.id)));
+
+            // Remove from warning, move to info with suggested values applied
+            setData(prev => ({
+                ...prev,
+                warning: prev.warning.filter(r => Number(r.id) !== Number(row.id)),
+                info: [...prev.info, {
+                    ...row,
+                    month:           row.suggested_month    ?? row.month,
+                    year:            row.suggested_year     ?? row.year,
+                    category:        row.suggested_category ?? row.category,
+                    quantity:        row.suggested_quantity ?? row.quantity,
+                    price:           row.suggested_price    ?? row.price,
+                    total:           row.suggested_total    ?? row.total,
+                    suggested_month:    null,
+                    suggested_year:     null,
+                    suggested_category: null,
+                    suggested_quantity: null,
+                    suggested_price:    null,
+                    suggested_total:    null,
+                    user_confirmed: true,
+                    error_level:    'info'
+                }]
+            }));
+
+            showToast(`${row.product} accepted ✓`);
+        } catch (err) {
+            console.error("Accept suggestion failed", err);
+            showToast('Failed to accept suggestion', 'error');
+        }
+    };
+
+    const handleRejectSuggestion = async (row) => {
+        try {
+            await api.post('/delete_ai_suggested_warning', { row_id: row.id });
+
+            // Remove from suggestions table
+            setWarningSuggestions(prev => prev.filter(r => Number(r.id) !== Number(row.id)));
+
+            // Clear suggested values in warning table row
+            setData(prev => ({
+                ...prev,
+                warning: prev.warning.map(r =>
+                    Number(r.id) === Number(row.id) ? {
+                        ...r,
+                        suggested_month:    null,
+                        suggested_year:     null,
+                        suggested_category: null,
+                        suggested_quantity: null,
+                        suggested_price:    null,
+                        suggested_total:    null,
+                    } : r
+                )
+            }));
+
+            showToast(`Suggestion rejected for ${row.product}`);
+        } catch (err) {
+            console.error("Reject suggestion failed", err);
+            showToast('Failed to reject suggestion', 'error');
+        }
+    };
+
+
+    // this is for confirm all in info table 
+    const [confirmAllInfoConfirm, setConfirmAllInfoConfirm] = useState(false);
+    const handleConfirmAllInfo = async () => {
+        try {
+            await api.post('/confirm_all_info_rows', { dataset_id: datasetId});
+            // fill business_data table
+            await api.post('/finalize_dataset', { dataset_id: datasetId });
+            
+            setData(prev => ({
+                ...prev,
+                info: prev.info.map(r => ({ ...r, user_confirmed: true }))
+            }));
+            setConfirmAllInfoConfirm(false);
+            showToast('All info rows confirmed');
+        } catch (err) {
+            console.error("Confirm all info rows failed", err);
+            showToast('Failed to confirm info rows', 'error');
+            setConfirmAllInfoConfirm(false);
+        }
+    };
 
     return (
         <div className="min-h-screen bg-slate-950 text-white overflow-hidden">
@@ -732,69 +876,6 @@ function ReviewPage() {
                                     </table>
                                 </div>    
                             )}
-                            {/* this is ai suggetion table - only display when click auto complete */}
-                            {/* ── Warning Suggestions Table ── */}
-                            {activeCard === "warning" && showSuggestions && warningSuggestions.length > 0 && (
-                                <div className="mt-6">
-                                    <div className="flex items-center gap-2.5 mb-3">
-                                        <span className="w-2 h-2 rounded-full bg-indigo-500" />
-                                        <h3 className="text-sm font-semibold text-indigo-400">
-                                            AI Suggestions for Warning Rows
-                                        </h3>
-                                        <span className="text-xs text-gray-500">— {warningSuggestions.length} suggestions</span>
-                                    </div>
-
-                                    <div className="overflow-x-auto rounded-xl border border-indigo-700/40 bg-gray-900">
-                                        <table className="w-full text-sm">
-                                            <thead>
-                                                <tr className="border-b border-gray-700/60 bg-gray-800/60">
-                                                    {["Product", "Field", "Original", "Suggested", "Actions"].map(h => (
-                                                        <th key={h} className="px-5 py-3 text-left text-xs font-semibold text-gray-400 uppercase tracking-wider whitespace-nowrap">
-                                                            {h}
-                                                        </th>
-                                                    ))}
-                                                </tr>
-                                            </thead>
-                                            <tbody className="divide-y divide-gray-800">
-                                                {warningSuggestions.map((row, index) => (
-                                                    <tr key={index} className="hover:bg-indigo-500/5 transition-colors">
-                                                        <td className="px-5 py-3.5 text-white text-xs font-medium">{row.product}</td>
-                                                        <td className="px-5 py-3.5">
-                                                            <span className="px-2 py-0.5 rounded text-xs font-medium bg-indigo-500/20 text-indigo-400">
-                                                                {row.field}
-                                                            </span>
-                                                        </td>
-                                                        <td className="px-5 py-3.5 text-gray-400 text-xs font-mono line-through decoration-red-400/60">
-                                                            {row.original_value ?? "—"}
-                                                        </td>
-                                                        <td className="px-5 py-3.5 text-green-400 text-xs font-mono font-medium">
-                                                            {row.suggested_value ?? "—"}
-                                                        </td>
-                                                        <td className="px-5 py-3.5 whitespace-nowrap">
-                                                            <div className="flex gap-3">
-                                                                <button
-                                                                    onClick={() => handleAcceptSuggestion(row)}
-                                                                    className="text-xs text-green-400 hover:text-green-300 transition-colors"
-                                                                >
-                                                                    ✓ Accept
-                                                                </button>
-                                                                <button
-                                                                    onClick={() => handleRejectSuggestion(row)}
-                                                                    className="text-xs text-red-400 hover:text-red-300 transition-colors"
-                                                                >
-                                                                    ✕ Reject
-                                                                </button>
-                                                            </div>
-                                                        </td>
-                                                    </tr>
-                                                ))}
-                                            </tbody>
-                                        </table>
-                                    </div>
-                                </div>
-                            )}
-
-
                             
                         </div>
 
@@ -806,7 +887,9 @@ function ReviewPage() {
                             {/* only for critical data */}
                             {activeCard === "critical" && (
                                 <>
-                                    <button className="px-5 py-2 rounded-lg text-sm font-medium bg-red-600 hover:bg-red-500 text-white transition-colors flex items-center gap-2">
+                                    <button 
+                                        onClick={() => setDeleteAllConfirm(true)}
+                                        className="px-5 py-2 rounded-lg text-sm font-medium bg-red-600 hover:bg-red-500 text-white transition-colors flex items-center gap-2">
                                         <Trash2 size={14} /> Delete All Critical
                                     </button>
                                 </>
@@ -823,7 +906,9 @@ function ReviewPage() {
                                         {/* ↗ Auto Complete All */}
                                         {autoCompleteLoading ? "Processing..." : "↗ Auto Complete All"}
                                     </button>
-                                    <button className="px-5 py-2 rounded-lg text-sm font-medium bg-yellow-600 hover:bg-yellow-500 text-white transition-colors">
+                                    <button 
+                                        onClick={() => setConfirmAllWarningConfirm(true)}
+                                        className="px-5 py-2 rounded-lg text-sm font-medium bg-yellow-600 hover:bg-yellow-500 text-white transition-colors">
                                         ✓ Confirm All Warnings
                                     </button>
                                 </>
@@ -832,7 +917,9 @@ function ReviewPage() {
                             {/* info — confirm all valid rows */}
                             {activeCard === "info" && (
                                 <>
-                                    <button className="px-5 py-2 rounded-lg text-sm font-medium bg-emerald-600 hover:bg-emerald-500 text-white transition-colors">
+                                    <button 
+                                        onClick={() => setConfirmAllInfoConfirm(true)}
+                                        className="px-5 py-2 rounded-lg text-sm font-medium bg-emerald-600 hover:bg-emerald-500 text-white transition-colors">
                                         ✓ Confirm All
                                     </button>
                                 </>
@@ -859,6 +946,124 @@ function ReviewPage() {
                             </button>
                             
                         </div>
+
+
+
+
+                        {/* this is ai suggetion table - only display when click auto complete */}
+                        {/* ── Warning Suggestions Table ── */}
+                        {activeCard === "warning" && showSuggestions && warningSuggestions.length > 0 && (
+                            <div className="mt-6">
+                                <div className="flex items-center gap-2.5 mb-3">
+                                    <span className="w-2 h-2 rounded-full bg-indigo-500" />
+                                    <h3 className="text-sm font-semibold text-indigo-400">
+                                        AI Suggestions for Warning Rows
+                                    </h3>
+                                    <span className="text-xs text-gray-500">— {warningSuggestions.length} suggestions</span>
+                                </div>
+
+                                <div className="overflow-x-auto rounded-xl border border-indigo-700/40 bg-gray-900">
+                                    <table className="w-full text-sm">
+                                        <thead>
+                                            <tr className="border-b border-gray-700/60 bg-gray-800/60">
+                                                {["Date", "Month", "Year", "Product Name", "Category", "Quantity", "Price", "Total", "Actions"].map(h => (
+                                                    <th key={h} className="px-5 py-3 text-left text-xs font-semibold text-gray-400 uppercase tracking-wider whitespace-nowrap">
+                                                        {h}
+                                                    </th>
+                                                ))}
+                                            </tr>
+                                        </thead>
+                                        <tbody className="divide-y divide-gray-800">
+                                            {warningSuggestions.map((row, index) => (
+                                                <tr key={index} className="hover:bg-indigo-500/5 transition-colors">
+                                                    <td className="px-5 py-3.5 text-gray-300 font-mono text-xs whitespace-nowrap">
+                                                        {row.date}
+                                                    </td>
+                                                    <td className="px-5 py-3.5 text-xs whitespace-nowrap">
+                                                        {row.suggested_month ? (
+                                                            <span className="px-2 py-0.5 rounded bg-purple-500/20 text-purple-300 font-mono font-medium">
+                                                                {row.suggested_month}
+                                                            </span>
+                                                        ) : row.month || "—"}
+                                                    </td>
+                                                    <td className="px-5 py-3.5 text-xs whitespace-nowrap">
+                                                        {row.suggested_year ? (
+                                                            <span className="px-2 py-0.5 rounded bg-purple-500/20 text-purple-300 font-mono font-medium">
+                                                                {row.suggested_year}
+                                                            </span>
+                                                        ) : row.year || "—"}
+                                                    </td>
+                                                    <td className="px-5 py-3.5 text-white font-medium text-xs whitespace-nowrap">
+                                                        {row.product || "—"}
+                                                    </td>
+                                                    <td className="px-5 py-3.5 text-xs whitespace-nowrap">
+                                                        {row.suggested_category ? (
+                                                            <span className="px-2 py-0.5 rounded bg-purple-500/20 text-purple-300 font-medium">
+                                                                {row.suggested_category}
+                                                            </span>
+                                                        ) : row.category || "—"}
+                                                    </td>
+                                                    <td className="px-5 py-3.5 text-xs whitespace-nowrap">
+                                                        {row.suggested_quantity ? (
+                                                            <span className="px-2 py-0.5 rounded bg-purple-500/20 text-purple-300 font-mono font-medium">
+                                                                {row.suggested_quantity}
+                                                            </span>
+                                                        ) : row.quantity || "—"}
+                                                    </td>
+                                                    <td className="px-5 py-3.5 text-xs whitespace-nowrap">
+                                                        {row.suggested_price ? (
+                                                            <span className="px-2 py-0.5 rounded bg-purple-500/20 text-purple-300 font-mono font-medium">
+                                                                {row.suggested_price}
+                                                            </span>
+                                                        ) : row.price || "—"}
+                                                    </td>
+                                                    <td className="px-5 py-3.5 text-xs whitespace-nowrap">
+                                                        {row.suggested_total ? (
+                                                            <span className="px-2 py-0.5 rounded bg-purple-500/20 text-purple-300 font-mono font-medium">
+                                                                {row.suggested_total}
+                                                            </span>
+                                                        ) : row.total || "—"}
+                                                    </td>
+                                                    <td className="px-5 py-3.5 whitespace-nowrap">
+                                                        <div className="flex gap-3">
+                                                            <button
+                                                                onClick={() => handleAcceptSuggestion(row)}
+                                                                className="text-xs text-green-400 hover:text-green-300 transition-colors"
+                                                            >
+                                                                ✓ Accept
+                                                            </button>
+                                                            <button
+                                                                onClick={() => handleRejectSuggestion(row)}
+                                                                className="text-xs text-red-400 hover:text-red-300 transition-colors"
+                                                            >
+                                                                ✕ Reject
+                                                            </button>
+                                                        </div>
+                                                    </td>
+                                                </tr>
+                                            ))}
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        )}
+
+                        <div className="flex flex-wrap gap-3 pt-2 border-t border-gray-800">
+                           
+
+                            {/* only for critical data */}
+                            {activeCard === "warning" && showSuggestions && warningSuggestions.length > 0 && (
+                                <>
+                                    <button className="px-5 py-2 rounded-lg text-sm font-medium bg-red-600 hover:bg-red-500 text-white transition-colors flex items-center gap-2">
+                                        <Trash2 size={14} /> Reject All 
+                                    </button>
+
+                                    <button className="px-5 py-2 rounded-lg text-sm font-medium bg-purple-600 hover:bg-purple-500 text-white transition-colors">
+                                        ✓ Accept All
+                                    </button>
+                                </>
+                            )}
+                        </div>    
                     </div>
 
                     {/* ── Toast Notification ── */}
@@ -925,6 +1130,99 @@ function ReviewPage() {
                             </div>
                         </div>
                     )}
+
+                    {/* ── Delete All Confirmation Modal (for critical rows) ── */}
+                    {deleteAllConfirm && (
+                        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm">
+                            <div className="bg-gray-900 border border-gray-700 rounded-2xl p-6 w-full max-w-sm shadow-2xl">
+                                <div className="flex items-center justify-center w-12 h-12 rounded-full bg-red-500/10 border border-red-500/30 mx-auto mb-4">
+                                    <Trash2 size={20} className="text-red-400" />
+                                </div>
+                                <h3 className="text-white text-base font-semibold text-center mb-1">
+                                    Delete all critical rows?
+                                </h3>
+                                <p className="text-gray-400 text-xs text-center mb-5">
+                                    This will permanently delete <span className="text-red-400 font-medium">{data.critical.length} rows</span>. This cannot be undone.
+                                </p>
+                                <div className="flex gap-3">
+                                    <button
+                                        onClick={() => setDeleteAllConfirm(false)}
+                                        className="flex-1 px-4 py-2 rounded-lg text-sm font-medium bg-gray-800 hover:bg-gray-700 text-gray-300 border border-gray-700 transition-colors"
+                                    >
+                                        Cancel
+                                    </button>
+                                    <button
+                                        onClick={handleDeleteAllCritical}
+                                        className="flex-1 px-4 py-2 rounded-lg text-sm font-medium bg-red-600 hover:bg-red-500 text-white transition-colors"
+                                    >
+                                        Yes, Delete All
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    )}
+
+                    {/* ── Confirm All Warnings Modal ── */}
+                    {confirmAllWarningConfirm && (
+                        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm">
+                            <div className="bg-gray-900 border border-gray-700 rounded-2xl p-6 w-full max-w-sm shadow-2xl">
+                                <div className="flex items-center justify-center w-12 h-12 rounded-full bg-green-500/10 border border-green-500/30 mx-auto mb-4">
+                                    <CircleAlert size={20} className="text-green-400" />
+                                </div>
+                                <h3 className="text-white text-base font-semibold text-center mb-1">
+                                    Confirm all warning rows?
+                                </h3>
+                                <p className="text-gray-400 text-xs text-center mb-5">
+                                    This will confirm <span className="text-green-400 font-medium">{data.warning.length} rows</span>. You can still review them later in the "Info" tab. Are you sure?
+                                </p>
+                                <div className="flex gap-3">
+                                    <button
+                                        onClick={() => setConfirmAllWarningConfirm(false)}
+                                        className="flex-1 px-4 py-2 rounded-lg text-sm font-medium bg-gray-800 hover:bg-gray-700 text-gray-300 border border-gray-700 transition-colors"
+                                    >
+                                        Cancel
+                                    </button>
+                                    <button
+                                        onClick={handleConfirmAllWarning}
+                                        className="flex-1 px-4 py-2 rounded-lg text-sm font-medium bg-red-600 hover:bg-red-500 text-white transition-colors"
+                                    >
+                                        Yes, Confirm All
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    )}
+
+                    {/* ── Confirm All Info Modal ── */}
+                    {confirmAllInfoConfirm && (
+                        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm">
+                            <div className="bg-gray-900 border border-gray-700 rounded-2xl p-6 w-full max-w-sm shadow-2xl">
+                                <div className="flex items-center justify-center w-12 h-12 rounded-full bg-green-500/10 border border-green-500/30 mx-auto mb-4">
+                                    <CircleAlert size={20} className="text-green-400" />
+                                </div>
+                                <h3 className="text-white text-base font-semibold text-center mb-1">
+                                    Confirm all rows?
+                                </h3>
+                                <p className="text-gray-400 text-xs text-center mb-5">
+                                    This will confirm <span className="text-green-400 font-medium">{data.info.length} rows</span>. for the visualization and analysis these rows will be treated as clean and valid. Are you sure?
+                                </p>
+                                <div className="flex gap-3">
+                                    <button
+                                        onClick={() => setConfirmAllInfoConfirm(false)}
+                                        className="flex-1 px-4 py-2 rounded-lg text-sm font-medium bg-gray-800 hover:bg-gray-700 text-gray-300 border border-gray-700 transition-colors"
+                                    >
+                                        Cancel
+                                    </button>
+                                    <button
+                                        onClick={handleConfirmAllInfo}
+                                        className="flex-1 px-4 py-2 rounded-lg text-sm font-medium bg-emerald-600 hover:bg-emerald-500 text-white transition-colors"
+                                    >
+                                        Yes, Confirm All
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    )}        
                 </div>
             </div>    
             
