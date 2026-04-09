@@ -11,6 +11,7 @@ use App\Http\Controllers\DatasetController;
 use App\Http\Controllers\TempBusinessDataController;
 use App\Http\Controllers\SpellingController;
 use App\Http\Controllers\ErrorMessageController;
+use App\Http\Controllers\VisualBoardController;
 
 /*
 |--------------------------------------------------------------------------
@@ -67,6 +68,8 @@ Route::middleware('auth:sanctum')->group(function () {
 
     Route::get('/spelling_suggestions/{datasetId}', [SpellingController::class, 'getSuggestionsByDatasetId']);
     Route::get('/error_messages', [ErrorMessageController::class, 'getErrorMessages']);
+
+    Route::post('/get_chart_details', [VisualBoardController::class, 'getChartDetails']);
 });
 
 
