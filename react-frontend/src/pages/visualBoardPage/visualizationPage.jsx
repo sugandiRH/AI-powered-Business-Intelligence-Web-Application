@@ -162,6 +162,34 @@ function VisualizationPage() {
                             <TopProductsChart data={top_products} />
                         </div>
 
+                        {/* Highlight KPIs */}
+                        <div className="grid grid-cols-3 gap-3">
+                            <div className="bg-white border border-gray-200 rounded-xl p-4 flex items-center gap-3">
+                            <div className="w-9 h-9 bg-green-50 rounded-lg flex items-center justify-center text-green-600 text-lg">★</div>
+                            <div>
+                                <p className="text-xs text-gray-400">Top category</p>
+                                <p className="text-sm font-semibold text-gray-900">{kpis.top_category.name}</p>
+                                <p className="text-xs text-gray-500">Rs {kpis.top_category.revenue.toLocaleString()}</p>
+                            </div>
+                            </div>
+                            <div className="bg-white border border-gray-200 rounded-xl p-4 flex items-center gap-3">
+                            <div className="w-9 h-9 bg-orange-50 rounded-lg flex items-center justify-center text-orange-600 text-lg">▲</div>
+                            <div>
+                                <p className="text-xs text-gray-400">Top product</p>
+                                <p className="text-sm font-semibold text-gray-900">{kpis.top_product.name}</p>
+                                <p className="text-xs text-gray-500">Rs {kpis.top_product.revenue.toLocaleString()}</p>
+                            </div>
+                            </div>
+                            <div className="bg-white border border-gray-200 rounded-xl p-4 flex items-center gap-3">
+                            <div className="w-9 h-9 bg-purple-50 rounded-lg flex items-center justify-center text-purple-600 text-lg">◉</div>
+                            <div>
+                                <p className="text-xs text-gray-400">Best month</p>
+                                <p className="text-sm font-semibold text-gray-900">Month {kpis.best_month.month}</p>
+                                <p className="text-xs text-gray-500">Rs {kpis.best_month.revenue.toLocaleString()}</p>
+                            </div>
+                            </div>
+                        </div>
+
                     </div>
                 </div>
             </div>
