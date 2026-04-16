@@ -24,6 +24,24 @@ class VisualBoardController extends Controller
             return response()->json(['error' => $e->getMessage()], 500);
         }
     }
+
+    public function getAISummary(Request $request)
+    {
+        try {
+            $response = Http::post('http://127.0.0.1:8001/get_summary', [
+            'dataset_id' => $request->dataset_id,
+            ]);
+
+            return response()->json($response->json());
+            
+        } catch (\Exception $e) {
+
+            return response()->json([
+                'error' => $e->getMessage()
+            ], 500);
+
+        }
+    }
 }
 
 ?>

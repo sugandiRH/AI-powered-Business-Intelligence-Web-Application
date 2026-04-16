@@ -74,9 +74,14 @@ function Dashboard() {
     };
 
     const viewDataSet = (id, stats) => {
-        if (stats=== "Start Review") {
+        if (stats=== "Start Review" | stats === "completed") {
             navigate(`/review1/${id}`);
         }
+    }
+
+    // navigate to visual board 
+    const viewVisualization = (id) => {
+        navigate(`/visualization/${id}`);
     }
 
     return (
@@ -216,7 +221,7 @@ function Dashboard() {
                                         <th className="px-6 py-3">Uploaded Date</th>
                                         <th className="px-6 py-3">Total Rows</th>
                                         <th className="px-6 py-3">Mapped Columns</th>
-                                        <th className="px-6 py-3">Status</th>
+                                        <th className="px-6 py-3">Review Status</th>
                                         <th className="px-6 py-3">Actions</th>
                                     </tr>
                                 </thead>
@@ -250,7 +255,13 @@ function Dashboard() {
                                                     </span>
                                                 </td>
                                                 <td className="px-4 py-2 flex space-x-2">
-                                                    <Eye size={16} className="cursor-pointer" onClick={() => viewDataSet(dataset.id, dataset.status)}/>
+                                                    {/* {dataset.status === "Start Review" && (
+                                                        <Eye size={16} className="cursor-pointer text-blue-400" onClick={() => viewDataSet(dataset.id, dataset.status)} />
+                                                    )} */}
+                                                    {dataset.status === "completed" && (
+                                                        <BarChart3 size={16} className="cursor-pointer text-green-400" onClick={() => viewVisualization(dataset.id)} />
+                                                    )}
+                                                    <Eye size={16} className="cursor-pointer text-blue-400" onClick={() => viewDataSet(dataset.id, dataset.status)} />
                                                     <Trash2 size={16} className="cursor-pointer text-red-500" onClick={() => deleteDataSet(dataset.id)} />
                                                 </td>
                                             </tr>

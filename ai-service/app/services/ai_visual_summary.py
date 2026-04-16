@@ -31,7 +31,7 @@ def getSummary(dataset_id: int, db: Session):
 
 def generate_visual_summary(kpis, chart_data):
     prompt = f"""
-You are a business analyst reviewing sales data.
+You are a business analyst reviewing sales data. Analyse this sales data and return JSON only.
 
 KPIs:
 {json.dumps(kpis, indent=2)}
@@ -45,19 +45,24 @@ Revenue by category:
 Top products:
 {json.dumps(chart_data['top_products'], indent=2)}
 
-Write a 2-3 sentence business summary covering:
-1. Overall performance (use the KPI numbers)
-2. Best performing category and product
-3. One specific recommendation based on the data
-
-Write in plain English. Do not use bullet points. Do not use markdown.
+Return ONLY this JSON structure, no extra text:
+{{
+  "summary": "2-3 sentence business summary covering Overall performance (use the KPI numbers),Best performing category and product and three specific recommendation based on the data",
+  "dashboard_overview": "2-3 sentence overall business summary using KPI numbers",
+  "trend_insight": "what the monthly revenue trend shows — growth, dips, peaks",
+  "category_insight": "which category leads, which underperforms, one recommendation",
+  "product_insight": "top product performance and what it means",
+  "anomaly": "any unusual value — big drop, zero sales, spike — or null if none",
+  "recommendation": "one specific actionable recommendation based on the data"
+}}
 """
 
     response = client.chat.completions.create(
         model="gpt-4o-mini",
         messages=[{"role": "user", "content": prompt}],
-        max_tokens=200,
+        response_format={"type": "json_object"},
+        max_tokens=400,
         temperature=0.3,    
     )
 
-    return response.choices[0].message.content.strip()
+    return json.loads(response.choices[0].message.content)

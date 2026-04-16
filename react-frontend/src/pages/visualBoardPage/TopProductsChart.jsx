@@ -1,10 +1,8 @@
-// components/charts/TopProductsChart.jsx
 import {
   BarChart, Bar, XAxis, YAxis,
   CartesianGrid, Tooltip, ResponsiveContainer, LabelList
 } from 'recharts';
 
-// Custom tooltip
 const CustomTooltip = ({ active, payload }) => {
   if (!active || !payload?.length) return null;
   const d = payload[0].payload;
@@ -16,7 +14,6 @@ const CustomTooltip = ({ active, payload }) => {
   );
 };
 
-// Auto-generate summary from data
 const buildSummary = (data) => {
   if (!data?.length) return '';
   const top = data[0];
@@ -31,15 +28,11 @@ const buildSummary = (data) => {
 export default function TopProductsChart({ data }) {
   if (!data?.length) return null;
 
-  // Sort highest first — your Python already does this,
-  // but sort here too as a safety net
   const sorted = [...data].sort((a, b) => b.revenue - a.revenue);
-
-  // Height scales with number of bars — 40px per bar + 60px padding
   const chartHeight = sorted.length * 40 + 60;
 
   return (
-    <div className="bg-white border border-gray-200 rounded-xl p-4">
+    <div className="border-gray-700 bg-gray-800/60 rounded-xl p-4">
 
       {/* Header */}
       <div className="flex items-start justify-between mb-3">
@@ -65,7 +58,6 @@ export default function TopProductsChart({ data }) {
             horizontal={false}       
           />
 
-          {/* Y axis shows product names */}
           <YAxis
             dataKey="product"
             type="category"          
@@ -75,7 +67,6 @@ export default function TopProductsChart({ data }) {
             axisLine={false}
           />
 
-          {/* X axis shows revenue numbers */}
           <XAxis
             type="number"         
             tickFormatter={(v) => `Rs ${(v / 1000).toFixed(0)}K`}
@@ -88,11 +79,10 @@ export default function TopProductsChart({ data }) {
 
           <Bar
             dataKey="revenue"
-            fill="#185FA5"
+            fill="#1D9E75"
             radius={[0, 4, 4, 0]}  
             maxBarSize={24}
           >
-            {/* Revenue label shown at end of each bar */}
             <LabelList
               dataKey="revenue"
               position="right"
@@ -104,8 +94,8 @@ export default function TopProductsChart({ data }) {
       </ResponsiveContainer>
 
       {/* Summary */}
-      <div className="border-l-4 border-blue-500 bg-blue-50 px-3 py-2 mt-3">
-        <p className="text-xs text-gray-500 leading-relaxed">
+      <div className="border-l-4 rounded-xl border-blue-500 bg-gray-800/70 px-3 py-2 mt-3">
+        <p className="text-xs text-gray-300 leading-relaxed">
           {buildSummary(sorted)} 
         </p>
       </div>

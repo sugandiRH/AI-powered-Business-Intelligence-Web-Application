@@ -1,11 +1,10 @@
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
-import SummaryBox from './SummaryBox';
 
 const MONTHS = ['','Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
 
 export default function RevenueLineChart({ data }) {
   return (
-    <div className="bg-white border border-gray-200 rounded-xl p-4">
+    <div className="border-gray-700 bg-gray-800/60 rounded-xl p-4">
       <div className="flex items-start justify-between mb-3">
         <div>
           <p className="text-sm font-medium text-gray-900">Monthly revenue trend</p>
@@ -24,7 +23,6 @@ export default function RevenueLineChart({ data }) {
             tick={{ fontSize: 11, fill: '#9ca3af' }}
           />
           <YAxis
-            // tickFormatter={(v) => `Rs ${(v/1000).toFixed(0)}K`}
             tick={{ fontSize: 11, fill: '#9ca3af' }}
           />
           <Tooltip
@@ -34,14 +32,13 @@ export default function RevenueLineChart({ data }) {
           <Line
             type="monotone"
             dataKey="revenue"
-            stroke="#185FA5"
+            stroke="#9A92F0"
             strokeWidth={2}
-            dot={{ r: 3, fill: '#185FA5' }}
+            dot={{ r: 3, fill: '#9A92F0' }}
             activeDot={{ r: 5 }}
           />
         </LineChart>
       </ResponsiveContainer>
-      {/* <SummaryBox text="Revenue peaked in the highest month. Consistent upward trend across the year." /> */}
     </div>
   );
 }
