@@ -7,6 +7,7 @@ import RevenueLineChart from "./RevenueLineChart";
 import CategoryBarChart from "./CategoryBarChart";
 import CategoryPieChart from "./CategoryPieChart";
 import TopProductsChart from "./TopProductsChart";
+import ChatPanel from "./ChatPanel";
 
 import {
     LayoutDashboard,
@@ -18,7 +19,8 @@ import {
     TrendingUp, 
     Package, 
     AlertTriangle, 
-    Lightbulb 
+    Lightbulb ,
+    MessageSquare 
 } from "lucide-react";
 
 
@@ -87,6 +89,9 @@ function VisualizationPage() {
     const [aiSummary, setAiSummary] = useState(null);
     const [summaryLoading, setSummaryLoading] = useState(false);
     const [showSummary, setShowSummary] = useState(false);
+
+    // this for chatbot
+    const [isChatOpen, setIsChatOpen] = useState(false);
 
     useEffect(() => {
         const token = localStorage.getItem("token");
@@ -217,8 +222,9 @@ function VisualizationPage() {
                     </div>
                 </div>
 
+
                 {/* main content */}
-                <div className="flex-1 flex flex-col">
+                <div className="flex-1 flex flex-col overflow-hidden">
 
                     {/* top bar */}
                     <div className="bg-gray-900 text-white px-6 py-4 flex justify-between items-center">
@@ -227,195 +233,215 @@ function VisualizationPage() {
                             <p className="text-xs text-gray-500 mt-0.5">Dataset #{datasetId}</p>
                         </div>
 
-                        <div className="relative">
-                            <div
-                                className="flex items-center space-x-2 cursor-pointer"
-                                onClick={() => setIsProfileOpen(!isProfileOpen)}
+                        <div className="flex items-center gap-3">   {/* ← group button + user together */}
+                            
+                            <button
+                                onClick={() => setIsChatOpen(!isChatOpen)}
+                                className={`p-2 rounded-lg transition-colors ${
+                                    isChatOpen ? "bg-indigo-600" : "bg-gray-700 hover:bg-gray-600"
+                                }`}
                             >
-                                {user && <span className="font-medium">{user.name}</span>}
-                                <ChevronDown size={18} />
+                                <MessageSquare size={18} className="text-white" />
+                            </button>
+
+                            <div className="relative">
+                                <div
+                                    className="flex items-center space-x-2 cursor-pointer"
+                                    onClick={() => setIsProfileOpen(!isProfileOpen)}
+                                >
+                                    {user && <span className="font-medium">{user.name}</span>}
+                                    <ChevronDown size={18} />
+                                </div>
+                                {isProfileOpen && (
+                                    <div className="absolute right-0 mt-2 w-40 bg-gray-800 shadow rounded-lg py-2 z-10">
+                                        <div className="px-4 py-2 hover:bg-gray-900 cursor-pointer flex items-center space-x-2">
+                                            <Settings size={16} />
+                                            <span>Settings</span>
+                                        </div>
+                                        <div
+                                            className="px-4 py-2 hover:bg-gray-900 cursor-pointer flex items-center space-x-2 text-red-500"
+                                            onClick={handleLogout}
+                                        >
+                                            <LogOut size={16} />
+                                            <span>Logout</span>
+                                        </div>
+                                    </div>
+                                )}
+                            </div>
+                        </div>
+                    </div>
+
+                    <div className="flex-1 flex overflow-hidden">
+                        <div className="flex-1 overflow-y-auto p-6 space-y-6">
+
+                            {/* KPI Cards */}
+                            <div className="grid grid-cols-4 gap-3">
+                                <KpiCards
+                                    label="Total revenue"
+                                    value={`Rs ${kpis.total_revenue.toLocaleString()}`}
+                                    sub="SUM of all sales"
+                                    iconBg="bg-blue-50"
+                                    icon={<span className="text-blue-600 text-sm font-bold">Rs</span>}
+                                />
+                                <KpiCards
+                                    label="Total orders"
+                                    value={kpis.total_orders}
+                                    sub="COUNT of records"
+                                    iconBg="bg-green-50"
+                                    icon={<span className="text-green-600 text-sm font-bold">#</span>}
+                                />
+                                <KpiCards
+                                    label="Units sold"
+                                    value={kpis.total_units_sold}
+                                    sub="SUM(quantity)"
+                                    iconBg="bg-orange-50"
+                                    icon={<span className="text-orange-600 text-sm font-bold">Qty</span>}
+                                />
+                                <KpiCards
+                                    label="Avg order value"
+                                    value={`Rs ${kpis.avg_order_value.toLocaleString()}`}
+                                    sub="SUM / COUNT"
+                                    iconBg="bg-purple-50"
+                                    icon={<span className="text-purple-600 text-sm font-bold">Avg</span>}
+                                />
                             </div>
 
-                            {isProfileOpen && (
-                                <div className="absolute right-0 mt-2 w-40 bg-gray-800 shadow rounded-lg py-2 z-10">
-                                    <div className="px-4 py-2 hover:bg-gray-900 cursor-pointer flex items-center space-x-2">
-                                        <Settings size={16} />
-                                        <span>Settings</span>
-                                    </div>
-                                    <div
-                                        className="px-4 py-2 hover:bg-gray-900 cursor-pointer flex items-center space-x-2 text-red-500"
-                                        onClick={handleLogout}
-                                    >
-                                        <LogOut size={16} />
-                                        <span>Logout</span>
+                            {/* ai dashboard overview */}
+                            {showSummary && aiSummary && (
+                                <div className="grid grid-cols-2 gap-3">
+                                    <SummaryCard
+                                        label="AI Summary"
+                                        icon={<Lightbulb size={14} />}
+                                        text={aiSummary.summary}
+                                        colorClasses={COLORS.purple}
+                                    />
+                                    <SummaryCard
+                                        label="Dashboard Overview"
+                                        icon={<BarChart3 size={14} />}
+                                        text={aiSummary.dashboard_overview}
+                                        colorClasses={COLORS.blue}
+                                    />
+                                </div>
+                            )}
+
+                            {/* Charts */}
+                            <div className="grid grid-cols-2 gap-4">
+                                <div className="space-y-3">
+                                    <RevenueLineChart data={revenue_by_month} />
+                                    {showSummary && aiSummary && (
+                                        <div className="grid grid-cols-2 gap-3">
+                                            <SummaryCard
+                                                label="Trend Insight"
+                                                icon={<TrendingUp size={14} />}
+                                                text={aiSummary.trend_insight}
+                                                colorClasses={COLORS.teal}
+                                            />
+                                            <SummaryCard
+                                                label="Anomaly Detected"
+                                                icon={<AlertTriangle size={14} />}
+                                                text={aiSummary.anomaly}
+                                                colorClasses={COLORS.amber}
+                                            />
+                                        </div>
+                                    )}
+                                </div>
+
+                                <div className="space-y-3">
+                                    <CategoryBarChart data={revenue_by_category} />
+                                    {showSummary && aiSummary && (
+                                        <SummaryCard
+                                            label="Category Insight"
+                                            icon={<BarChart3 size={14} />}
+                                            text={aiSummary.category_insight}
+                                            colorClasses={COLORS.blue}
+                                        />                                
+                                    )}
+                                </div>
+                                
+                                <CategoryPieChart data={category_share} />
+
+                                <div className="space-y-3">
+                                    <TopProductsChart data={top_products} />
+                                    {showSummary && aiSummary && (
+                                        <SummaryCard
+                                            label="Product  Insight"
+                                            icon={<Package size={14} />}
+                                            text={aiSummary.product_insight}
+                                            colorClasses={COLORS.green}
+                                        />                                
+                                    )}
+                                </div>
+                                
+                            </div>
+
+                            {/* Highlight KPIs */}
+                            <div className="grid grid-cols-3 gap-3">
+                                <div className="border-gray-700 bg-gray-800/60 rounded-xl p-4 flex items-center gap-3">
+                                <div className="w-9 h-9 bg-green-50 rounded-lg flex items-center justify-center text-green-600 text-lg">★</div>
+                                <div>
+                                    <p className="text-xs text-gray-400">Top category</p>
+                                    <p className="text-sm font-semibold text-gray-200">{kpis.top_category.name}</p>
+                                    <p className="text-xs text-gray-500">Rs {kpis.top_category.revenue.toLocaleString()}</p>
+                                </div>
+                                </div>
+                                <div className="border-gray-700 bg-gray-800/60 rounded-xl p-4 flex items-center gap-3">
+                                <div className="w-9 h-9 bg-orange-50 rounded-lg flex items-center justify-center text-orange-600 text-lg">▲</div>
+                                <div>
+                                    <p className="text-xs text-gray-400">Top product</p>
+                                    <p className="text-sm font-semibold text-gray-200">{kpis.top_product.name}</p>
+                                    <p className="text-xs text-gray-500">Rs {kpis.top_product.revenue.toLocaleString()}</p>
+                                </div>
+                                </div>
+                                <div className="border-gray-700 bg-gray-800/60 rounded-xl p-4 flex items-center gap-3">
+                                <div className="w-9 h-9 bg-purple-50 rounded-lg flex items-center justify-center text-purple-600 text-lg">◉</div>
+                                <div>
+                                    <p className="text-xs text-gray-400">Best month</p>
+                                    <p className="text-sm font-semibold text-gray-200">Month {kpis.best_month.month}</p>
+                                    <p className="text-xs text-gray-500">Rs {kpis.best_month.revenue.toLocaleString()}</p>
+                                </div>
+                                </div>
+                            </div>
+
+                            {showSummary && aiSummary && aiSummary.recommendation && (
+                                <div className="rounded-xl border border-teal-500/40 bg-teal-500/10 p-4 flex items-start gap-3">
+                                    <Lightbulb size={16} className="text-teal-400 mt-0.5 shrink-0" />
+                                    <div>
+                                        <p className="text-xs font-semibold tracking-widest uppercase text-teal-400 mb-1">Recommendation</p>
+                                        <p className="text-sm text-gray-300 leading-relaxed">{aiSummary.recommendation}</p>
                                     </div>
                                 </div>
                             )}
-                        </div>
-                    </div>
 
-                    {/* scrollable content */}
-                    <div className="flex-1 overflow-y-auto p-6 space-y-6">
+                            <div className="flex flex-wrap gap-3 pt-2 border-t border-gray-800">
+                                <button 
+                                    onClick={() =>callAISummary()}
+                                    disabled={summaryLoading}
+                                    className={`px-5 py-2 rounded-lg text-sm font-medium transition-colors disabled:opacity-50 ${
+                                        showSummary
+                                            ? "bg-gray-700 hover:bg-gray-600 text-white"
+                                            : "bg-blue-600 hover:bg-blue-500 text-white"
+                                    }`}
+                                >
+                                    {summaryLoading ? "Loading…" : showSummary ? "Hide AI Summary" : "✦ Summarize with AI"}
+                                </button>
 
-                        {/* KPI Cards */}
-                        <div className="grid grid-cols-4 gap-3">
-                            <KpiCards
-                                label="Total revenue"
-                                value={`Rs ${kpis.total_revenue.toLocaleString()}`}
-                                sub="SUM of all sales"
-                                iconBg="bg-blue-50"
-                                icon={<span className="text-blue-600 text-sm font-bold">Rs</span>}
-                            />
-                            <KpiCards
-                                label="Total orders"
-                                value={kpis.total_orders}
-                                sub="COUNT of records"
-                                iconBg="bg-green-50"
-                                icon={<span className="text-green-600 text-sm font-bold">#</span>}
-                            />
-                            <KpiCards
-                                label="Units sold"
-                                value={kpis.total_units_sold}
-                                sub="SUM(quantity)"
-                                iconBg="bg-orange-50"
-                                icon={<span className="text-orange-600 text-sm font-bold">Qty</span>}
-                            />
-                            <KpiCards
-                                label="Avg order value"
-                                value={`Rs ${kpis.avg_order_value.toLocaleString()}`}
-                                sub="SUM / COUNT"
-                                iconBg="bg-purple-50"
-                                icon={<span className="text-purple-600 text-sm font-bold">Avg</span>}
-                            />
-                        </div>
-
-                        {/* ai dashboard overview */}
-                        {showSummary && aiSummary && (
-                            <div className="grid grid-cols-2 gap-3">
-                                <SummaryCard
-                                    label="AI Summary"
-                                    icon={<Lightbulb size={14} />}
-                                    text={aiSummary.summary}
-                                    colorClasses={COLORS.purple}
-                                />
-                                <SummaryCard
-                                    label="Dashboard Overview"
-                                    icon={<BarChart3 size={14} />}
-                                    text={aiSummary.dashboard_overview}
-                                    colorClasses={COLORS.blue}
-                                />
-                            </div>
-                        )}
-
-                        {/* Charts */}
-                        <div className="grid grid-cols-2 gap-4">
-                            <div className="space-y-3">
-                                <RevenueLineChart data={revenue_by_month} />
-                                {showSummary && aiSummary && (
-                                    <div className="grid grid-cols-2 gap-3">
-                                        <SummaryCard
-                                            label="Trend Insight"
-                                            icon={<TrendingUp size={14} />}
-                                            text={aiSummary.trend_insight}
-                                            colorClasses={COLORS.teal}
-                                        />
-                                        <SummaryCard
-                                            label="Anomaly Detected"
-                                            icon={<AlertTriangle size={14} />}
-                                            text={aiSummary.anomaly}
-                                            colorClasses={COLORS.amber}
-                                        />
-                                    </div>
-                                )}
-                            </div>
-
-                            <div className="space-y-3">
-                                <CategoryBarChart data={revenue_by_category} />
-                                {showSummary && aiSummary && (
-                                    <SummaryCard
-                                        label="Category Insight"
-                                        icon={<BarChart3 size={14} />}
-                                        text={aiSummary.category_insight}
-                                        colorClasses={COLORS.blue}
-                                    />                                
-                                )}
-                            </div>
-                            
-                            <CategoryPieChart data={category_share} />
-
-                            <div className="space-y-3">
-                                <TopProductsChart data={top_products} />
-                                {showSummary && aiSummary && (
-                                    <SummaryCard
-                                        label="Product  Insight"
-                                        icon={<Package size={14} />}
-                                        text={aiSummary.product_insight}
-                                        colorClasses={COLORS.green}
-                                    />                                
-                                )}
-                            </div>
-                            
-                        </div>
-
-                        {/* Highlight KPIs */}
-                        <div className="grid grid-cols-3 gap-3">
-                            <div className="border-gray-700 bg-gray-800/60 rounded-xl p-4 flex items-center gap-3">
-                            <div className="w-9 h-9 bg-green-50 rounded-lg flex items-center justify-center text-green-600 text-lg">★</div>
-                            <div>
-                                <p className="text-xs text-gray-400">Top category</p>
-                                <p className="text-sm font-semibold text-gray-200">{kpis.top_category.name}</p>
-                                <p className="text-xs text-gray-500">Rs {kpis.top_category.revenue.toLocaleString()}</p>
-                            </div>
-                            </div>
-                            <div className="border-gray-700 bg-gray-800/60 rounded-xl p-4 flex items-center gap-3">
-                            <div className="w-9 h-9 bg-orange-50 rounded-lg flex items-center justify-center text-orange-600 text-lg">▲</div>
-                            <div>
-                                <p className="text-xs text-gray-400">Top product</p>
-                                <p className="text-sm font-semibold text-gray-200">{kpis.top_product.name}</p>
-                                <p className="text-xs text-gray-500">Rs {kpis.top_product.revenue.toLocaleString()}</p>
-                            </div>
-                            </div>
-                            <div className="border-gray-700 bg-gray-800/60 rounded-xl p-4 flex items-center gap-3">
-                            <div className="w-9 h-9 bg-purple-50 rounded-lg flex items-center justify-center text-purple-600 text-lg">◉</div>
-                            <div>
-                                <p className="text-xs text-gray-400">Best month</p>
-                                <p className="text-sm font-semibold text-gray-200">Month {kpis.best_month.month}</p>
-                                <p className="text-xs text-gray-500">Rs {kpis.best_month.revenue.toLocaleString()}</p>
-                            </div>
-                            </div>
-                        </div>
-
-                        {showSummary && aiSummary && aiSummary.recommendation && (
-                            <div className="rounded-xl border border-teal-500/40 bg-teal-500/10 p-4 flex items-start gap-3">
-                                <Lightbulb size={16} className="text-teal-400 mt-0.5 shrink-0" />
                                 <div>
-                                    <p className="text-xs font-semibold tracking-widest uppercase text-teal-400 mb-1">Recommendation</p>
-                                    <p className="text-sm text-gray-300 leading-relaxed">{aiSummary.recommendation}</p>
+                                    
                                 </div>
                             </div>
-                        )}
 
-                        <div className="flex flex-wrap gap-3 pt-2 border-t border-gray-800">
-                            <button 
-                                onClick={() =>callAISummary()}
-                                disabled={summaryLoading}
-                                className={`px-5 py-2 rounded-lg text-sm font-medium transition-colors disabled:opacity-50 ${
-                                    showSummary
-                                        ? "bg-gray-700 hover:bg-gray-600 text-white"
-                                        : "bg-blue-600 hover:bg-blue-500 text-white"
-                                }`}
-                            >
-                                {summaryLoading ? "Loading…" : showSummary ? "Hide AI Summary" : "✦ Summarize with AI"}
-                            </button>
-
-                            <div>
-                                
-                            </div>
                         </div>
+
+                        {/* Chat panel — sits to the RIGHT of dashboard content */}
+                        {isChatOpen && (
+                            <ChatPanel
+                                datasetId={datasetId}
+                                onClose={() => setIsChatOpen(false)}
+                            />
+                        )}
 
                     </div>
 
-                    
                 </div>
             </div>
         </div>
