@@ -154,6 +154,11 @@ def _safe_int_month(val) -> int | None:
 def normalize(df: pd.DataFrame) -> pd.DataFrame:
     df = df.copy()
 
+    REQUIRED_COLUMNS = ["date", "product", "category", "quantity", "price", "total"]
+    for col in REQUIRED_COLUMNS:
+        if col not in df.columns:
+            df[col] = None
+
     for col in ("product", "category"):
         if col in df.columns:
             df[col] = (

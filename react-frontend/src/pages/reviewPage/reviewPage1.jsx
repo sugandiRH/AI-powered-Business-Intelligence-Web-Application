@@ -695,7 +695,7 @@ function ReviewPage() {
                                     <table className="w-full text-sm">
                                         <thead>
                                             <tr className="border-b border-gray-700/60 bg-gray-800/60">
-                                                {["Date", "Month", "Year", "Product Name", "Category", "Quantity", "Price", "Total", "Errors", "Actions"].map(h => (
+                                                {["Date", "Month", "Year", "Product Name", "Category", "Quantity", "Price", "Total", "Error", "Actions"].map(h => (
                                                     <th key={h} className="px-5 py-3 text-left text-xs font-semibold text-gray-400 uppercase tracking-wider whitespace-nowrap">
                                                         {h}
                                                     </th>
@@ -769,6 +769,7 @@ function ReviewPage() {
                                                                 />
                                                             </td>
                                                             <td className="px-5 py-3.5 text-gray-300 font-mono text-xs whitespace-nowrap">{row.validation_errors || "—"}</td>
+                                                            
                                                             <td className="px-3 py-2 whitespace-nowrap">
                                                                 <div className="flex gap-3">
                                                                     <button
@@ -797,7 +798,13 @@ function ReviewPage() {
                                                             <td className="px-5 py-3.5 text-gray-300 font-mono text-xs whitespace-nowrap">{row.quantity || "—"}</td>
                                                             <td className="px-5 py-3.5 text-gray-300 font-mono text-xs whitespace-nowrap">{row.price || "—"}</td>
                                                             <td className="px-5 py-3.5 text-gray-300 font-mono text-xs whitespace-nowrap">{row.total || "—"}</td>
-                                                            <td className="px-5 py-3.5 text-gray-300 font-mono text-xs whitespace-nowrap">{row.validation_errors || "—"}</td>
+                                                            {/* <td className="px-5 py-3.5 text-gray-300 font-mono text-xs whitespace-nowrap">{row.validation_errors || "—"}</td> */}
+                                                            <td className="px-5 py-3.5 text-gray-300 font-mono text-xs whitespace-nowrap">
+                                                                <button
+                                                                    className="flex items-center gap-1.5 text-xs text-purple-600 hover:text-purple-400 transition-colors">
+                                                                        view error
+                                                                </button>
+                                                            </td>
                                                             <td className="px-5 py-3.5 whitespace-nowrap">
                                                                 <div className="flex gap-4">
 

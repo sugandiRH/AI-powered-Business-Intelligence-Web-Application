@@ -147,12 +147,19 @@ def _float_or_none(val) -> float | None:
 def normalize(df: pd.DataFrame) -> pd.DataFrame:
     df = df.copy()
 
+    REQUIRED_COLUMNS = ["date", "product", "category", "quantity", "price", "total"]
+    for col in REQUIRED_COLUMNS:
+        if col not in df.columns:
+            df[col] = None
+
     for col in ("product", "category"):
         if col in df.columns:
             df[col] = (
                 df[col].astype(str).str.strip().str.lower()
                 .replace({"nan": None, "none": None, "": None})
             )
+        else:
+              df[col] = None   
 
     if "date" in df.columns:
         df["date"] = pd.to_datetime(df["date"], errors="coerce")
@@ -339,7 +346,8 @@ def validate_business(df: pd.DataFrame) -> pd.DataFrame:
  
     _add_error(df, df["quantity"].isna() | (df["quantity"] <= 0), "invalid_quantity")
     _add_error(df, df["price"].isna()    | (df["price"]    <= 0), "invalid_price")
-    _add_error(df, df["product"] == "",                            "missing_product")
+    _add_error(df, df["product"].isna(), "missing_product")
+    _add_error(df, df["category"].isna(), "missing_category")
  
     # Total consistency check
     all_present = df["quantity"].notna() & df["price"].notna() & df["total"].notna()

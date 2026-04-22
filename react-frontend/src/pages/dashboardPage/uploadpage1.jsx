@@ -89,7 +89,6 @@ function UploadPage() {
                 return;
             }
 
-            // 👉 go to review page
             navigate(`/review1/${datasetId}`);
 
         } catch (err) {

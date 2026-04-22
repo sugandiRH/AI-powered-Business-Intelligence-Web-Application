@@ -12,6 +12,8 @@ use App\Http\Controllers\TempBusinessDataController;
 use App\Http\Controllers\SpellingController;
 use App\Http\Controllers\ErrorMessageController;
 use App\Http\Controllers\VisualBoardController;
+use App\Http\Controllers\ChatbotController;
+
 
 /*
 |--------------------------------------------------------------------------
@@ -70,6 +72,8 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('/error_messages', [ErrorMessageController::class, 'getErrorMessages']);
 
     Route::post('/get_chart_details', [VisualBoardController::class, 'getChartDetails']);
+    Route::post('/get_ai_summary', [VisualBoardController::class, 'getAISummary']);
+    Route::post('/chatbot_question', [ChatbotController::class, 'ask']);
 });
 
 

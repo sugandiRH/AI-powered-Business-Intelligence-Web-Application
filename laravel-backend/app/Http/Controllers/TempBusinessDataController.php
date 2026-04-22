@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use Illuminate\Http\Request;
 use App\Models\TempBusinessDataSample;
 use App\Models\BusinessData;
+use App\Models\Dataset;
 
 class TempBusinessDataController extends Controller
 {
@@ -62,7 +63,11 @@ class TempBusinessDataController extends Controller
     public function getWarningRowByDatasetId($datasetId)
     {
         $data = TempBusinessDataSample::where('dataset_id', $datasetId)
-            ->where('error_level', 'warning')
+            // ->where('error_level', 'warning')
+            ->where(function ($query) {
+                $query->whereNull('error_level')
+                    ->orWhere('error_level', 'warning');
+            })
             ->select([
                 'id',
                 'date',
@@ -297,6 +302,11 @@ class TempBusinessDataController extends Controller
                 'total'      => $row->total ? (float) $row->total  : null,
             ]);
         }
+
+        Dataset::where('id', $datasetId)
+            ->update([
+                'status' => 'completed'
+            ]);
 
         return response()->json([
             'message' => 'Dataset finalized successfully',

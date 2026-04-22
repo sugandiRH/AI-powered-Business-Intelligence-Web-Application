@@ -84,6 +84,10 @@ function Dashboard() {
         navigate(`/visualization/${id}`);
     }
 
+    const deleteDataSet = (id) =>{
+        
+    }
+
     return (
         <div className="min-h-screen bg-slate-950 text-white overflow-hidden">
                         

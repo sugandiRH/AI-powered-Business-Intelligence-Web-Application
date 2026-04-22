@@ -4,16 +4,19 @@ from sqlalchemy import text
 import shutil
 import os
 import uuid
+import json
 
 from app.database import get_db
 from app.models.business_data import BusinessData
 from app.models.temp_business_data import TempBusinessData
+from app.models.datasets import Dataset
 
 
 from app.services.excel_reader import read_excel
 from app.services.ai_column_mapper import map_columns, STANDARD_COLUMNS
 from app.services.temp_data_service import save_temp_data
 # from app.services.data_cleaner import clean_data
+from app.services.chart_detector import detect_combination
 
 
 router = APIRouter()
@@ -59,6 +62,17 @@ async def upload_file(
             {"total_rows": len(df), "dataset_id": dataset_id}
         )
         db.commit()
+
+        # get chart recommend and store in datasets table
+        detection = detect_combination(df)
+        dataset_row = db.query(Dataset).filter(Dataset.id == dataset_id).first()
+
+        if dataset_row:
+            dataset_row.combination   = detection["combination"]
+            dataset_row.active_charts = json.dumps(detection["charts"])
+            dataset_row.active_kpis   = json.dumps(detection["kpis"])
+            db.commit()
+
     
         # Clean data and move to main table
         # df = clean_data(df)
@@ -66,6 +80,7 @@ async def upload_file(
         # Return response
         return {
             "status": "success",
+            "dataset_id": dataset_id,  
             "rows_inserted": len(df),
             "columns_detected": df.columns.tolist(),
             "column_mapping": column_mapping,

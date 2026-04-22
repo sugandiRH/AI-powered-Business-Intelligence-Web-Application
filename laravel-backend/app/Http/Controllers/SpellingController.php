@@ -59,46 +59,7 @@ class SpellingController extends Controller
 
     public function getWarningSuggestions($datasetId)
     {
-        // $rows = TempBusinessDataSample::where('dataset_id', $datasetId)
-        //     ->where('error_level', 'warning')
-        //     ->where(function($q) {
-        //         $q->whereNotNull('suggested_price')
-        //         ->orWhereNotNull('suggested_quantity')
-        //         ->orWhereNotNull('suggested_month')
-        //         ->orWhereNotNull('suggested_year')
-        //         ->orWhereNotNull('suggested_category')
-        //         ->orWhereNotNull('suggested_date');
-        //     })
-        //     ->get();
-
-        // // Flatten into field-level rows for display
-        // $suggestions = [];
-        // $fields = [
-        //     'price'    => ['original' => 'price',    'suggested' => 'suggested_price'],
-        //     'quantity' => ['original' => 'quantity',  'suggested' => 'suggested_quantity'],
-        //     'month'    => ['original' => 'month',     'suggested' => 'suggested_month'],
-        //     'year'     => ['original' => 'year',      'suggested' => 'suggested_year'],
-        //     'category' => ['original' => 'category',  'suggested' => 'suggested_category'],
-        //     'date'     => ['original' => 'date',      'suggested' => 'suggested_date'],
-        // ];
-
-        // foreach ($rows as $row) {
-        //     foreach ($fields as $field => $cols) {
-        //         if (!is_null($row->{$cols['suggested']})) {
-        //             $suggestions[] = [
-        //                 'id'              => $row->id,
-        //                 'product'         => $row->product,
-        //                 'field'           => $field,
-        //                 'original_value'  => $row->{$cols['original']},
-        //                 'suggested_value' => $row->{$cols['suggested']},
-        //             ];
-        //         }
-        //     }
-        // }
-
-        // return response()->json(['suggestions' => $suggestions]);
-
-
+        
         $rows = TempBusinessDataSample::where('dataset_id', $datasetId)
         ->where('error_level', 'warning')
         ->get([

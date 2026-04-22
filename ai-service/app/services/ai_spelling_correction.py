@@ -124,7 +124,7 @@ Values:
     response = client.chat.completions.create(
         model="gpt-4o-mini",
         messages=[{"role": "user", "content": prompt}],
-        response_format={"type": "json_object"}   # enforces JSON output, no markdown fences
+        response_format={"type": "json_object"}   
     )
 
     try:
