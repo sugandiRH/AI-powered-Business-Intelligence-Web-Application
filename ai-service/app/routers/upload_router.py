@@ -1,15 +1,23 @@
-from fastapi import APIRouter, UploadFile, File, Form, Depends
-from app.services.excel_service import process_excel
-from app.database import get_db
+from fastapi import APIRouter, UploadFile, File, Form, Depends, HTTPException
 from sqlalchemy.orm import Session
+from sqlalchemy import text
 import shutil
 import os
-from app.models.business_data import BusinessData
-from sqlalchemy import text
-
-# for modify upload
-from fastapi import HTTPException
 import uuid
+import json
+
+from app.database import get_db
+from app.models.business_data import BusinessData
+from app.models.temp_business_data import TempBusinessData
+from app.models.datasets import Dataset
+
+
+from app.services.excel_reader import read_excel
+from app.services.ai_column_mapper import map_columns, STANDARD_COLUMNS
+from app.services.temp_data_service import save_temp_data
+# from app.services.data_cleaner import clean_data
+from app.services.chart_detector import detect_combination
+
 
 router = APIRouter()
 
@@ -22,7 +30,7 @@ async def upload_file(
 ):
     try:
 
-        # 1. Save file temporarily
+        # Save file temporarily
         os.makedirs("upload", exist_ok=True)
 
         unique_filename = f"{uuid.uuid4()}_{file.filename}"
@@ -31,31 +39,56 @@ async def upload_file(
         with open(file_location, "wb") as buffer:
             shutil.copyfileobj(file.file, buffer)
 
-        # 2. Process Excel
-        df = process_excel(file_location)
+        # Process Excel
+        df = read_excel(file_location)
 
-        # 3. Insert into DB
-        db.execute(
-            text("DELETE FROM business_data WHERE dataset_id = :dataset_id"),
-            {"dataset_id": dataset_id}
+        # ai column mapping
+        column_mapping, confidence = map_columns(
+            df.columns.to_list(),
+            dataset_id,
+            db
         )
 
-        # Prepare bulk records
-        records = df.to_dict(orient="records")
+        # rename dataframe columns
+        df = df.rename(columns=column_mapping)
+        df = df[[col for col in df.columns if col in STANDARD_COLUMNS]]
 
-        for record in records:
-            record["user_id"] = user_id
-            record["dataset_id"] = dataset_id
+        # insert into temp_business_data table
+        save_temp_data(df, dataset_id, db)
 
-        db.bulk_insert_mappings(BusinessData, records)
+        # update total_rows in datasets table
+        db.execute(
+            text("UPDATE datasets SET total_rows = :total_rows WHERE id = :dataset_id"),
+            {"total_rows": len(df), "dataset_id": dataset_id}
+        )
         db.commit()
 
-        # 4. Return response
+        # get chart recommend and store in datasets table
+        detection = detect_combination(df)
+        dataset_row = db.query(Dataset).filter(Dataset.id == dataset_id).first()
+
+        if dataset_row:
+            dataset_row.combination   = detection["combination"]
+            dataset_row.active_charts = json.dumps(detection["charts"])
+            dataset_row.active_kpis   = json.dumps(detection["kpis"])
+            db.commit()
+
+    
+        # Clean data and move to main table
+        # df = clean_data(df)
+
+        # Return response
         return {
             "status": "success",
+            "dataset_id": dataset_id,  
             "rows_inserted": len(df),
-            "dataset_id": dataset_id
+            "columns_detected": df.columns.tolist(),
+            "column_mapping": column_mapping,
+            'confidence_scores': confidence
         }
+
     except Exception as e:
         db.rollback()
         raise HTTPException(status_code=400, detail=str(e))
+    
+    

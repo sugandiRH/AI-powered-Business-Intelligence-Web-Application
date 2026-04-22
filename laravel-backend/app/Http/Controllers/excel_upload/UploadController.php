@@ -10,6 +10,7 @@ use Validator;
 use App\Models\User;
 use App\Models\Dataset;
 use App\Models\BusinessData;
+use App\Models\TempBusinessDataSample;
 
 class UploadController extends Controller
 {
@@ -30,14 +31,18 @@ class UploadController extends Controller
 
             $hash = md5_file($file->getRealPath());
 
-            $existingDataset = Dataset::where('file_hash', $hash)->first();
+            $existingDataset = Dataset::where('user_id', $user->id)
+                ->where('file_hash', $hash)
+                ->first();
 
             if ($existingDataset) {
 
                 // delete old business data 
-                $existingDataset = Dataset::where('user_id', $user->id)
-                    ->where('file_hash', $hash)
-                    ->first();
+                BusinessData::where('dataset_id', $existingDataset->id)->delete();
+
+                // delete old business data in temp_business_data table
+                TempBusinessDataSample::where('dataset_id', $existingDataset->id)->delete();
+
 
                 // update dataset status
                 $existingDataset->status = 'processing';
@@ -68,14 +73,17 @@ class UploadController extends Controller
                 'dataset_id' => $dataset->id,
             ]);
 
-            // handle response from python server
+            // handle response from python server after processing file
             if ($response->successful()) {
-                $dataset->status = 'completed';
+                $dataset->status = 'Start Review';
                 $dataset->save();
                 return response()->json([
                     'message' => 'File uploaded and processed successfully',
                     'dataset_id' => $dataset->id,
-                    'rows_inserted' => $response->json('rows_inserted')
+                    'rows_inserted' => $response->json('rows_inserted'),
+                    "columns_detected" => $response->json('columns_detected'),
+                    "column_mapping" => $response->json('column_mapping'),
+                    'confidence_scores' => $response->json('confidence_scores')
                 ], 200);
             } else {
                 $dataset->status = 'failed';
@@ -95,6 +103,31 @@ class UploadController extends Controller
             ], 500);
         }
     }
-}
 
-?>
+    public function confirmUpload(Request $request)
+    {
+        try {
+            $response = Http::post('http://127.0.0.1:8001/confirm_upload', [
+            'dataset_id' => $request->dataset_id,
+            ]);
+
+            // if reponse is successful, fetch data from business_data table and return to frontend
+            if ($response->successful()) {
+                // $datasetId = $response->json('dataset_id');
+
+                return response()->json([
+                    'dataset_id' => $response->json('dataset_id'),
+                    'message' => 'Please review the data and confirm if it is correct.'
+                ], 200);
+            }
+
+            return response()->json($response->json());
+        } catch (\Exception $e) {
+
+            return response()->json([
+                'error' => $e->getMessage()
+            ], 500);
+
+        }
+    }
+}

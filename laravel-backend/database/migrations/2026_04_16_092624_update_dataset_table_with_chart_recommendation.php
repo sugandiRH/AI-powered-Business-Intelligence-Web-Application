@@ -11,8 +11,10 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::table('users', function (Blueprint $table) {
-            $table->string('business_type')->nullable()->after('email');
+        Schema::table('datasets', function (Blueprint $table) {
+            $table->string('combination')->default('unknown');
+            $table->json('active_charts')->nullable();
+            $table->json('active_kpis')->nullable();
         });
     }
 
@@ -21,8 +23,6 @@ return new class extends Migration
      */
     public function down(): void
     {
-        Schema::table('users', function (Blueprint $table) {
-            // $table->dropColumn('business_type');
-        });
+        //
     }
 };

@@ -11,9 +11,9 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::table('datasets', function (Blueprint $table) {
-            $table->string('file_hash')->unique();
-            $table->text('error_message')->nullable()->change();
+        Schema::table('ai_corrections', function (Blueprint $table) {
+            // Drop old unique if any exists
+            $table->unique(['column_name', 'original_value'], 'ai_corrections_column_name_original_value_unique');
         });
     }
 
@@ -22,8 +22,6 @@ return new class extends Migration
      */
     public function down(): void
     {
-        Schema::table('datasets', function (Blueprint $table) {
-            //
-        });
+        //
     }
 };
