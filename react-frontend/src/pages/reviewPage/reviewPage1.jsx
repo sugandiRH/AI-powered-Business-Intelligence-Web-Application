@@ -1,3 +1,5 @@
+// here use Claude AI for style the interface and correct the errors
+
 import { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 
@@ -27,6 +29,7 @@ function ReviewPage() {
     const [isSidebarOpen, setIsSidebarOpen] = useState(true);
     const [isDatasetOpen, setIsDatasetOpen] = useState(false);
     const [isProfileOpen, setIsProfileOpen] = useState(false);
+    const [errorPopup, setErrorPopup] = useState(null);
 
 
     const navigate = useNavigate();
@@ -188,7 +191,7 @@ function ReviewPage() {
         },    
     ];
 
-    // ── Table config per type ────────────────────────────────────────────────
+    // Table config per type 
     const tableConfig = {
         ai_suggestions: { title: "AI Spelling Suggestions", titleColor: "text-purple-400", dot: "bg-purple-500", rowHover: "hover:bg-purple-500/5" },
         critical: { title: "Critical Issues", titleColor: "text-red-400", dot: "bg-red-500", rowHover: "hover:bg-red-500/5" },
@@ -799,11 +802,17 @@ function ReviewPage() {
                                                             <td className="px-5 py-3.5 text-gray-300 font-mono text-xs whitespace-nowrap">{row.price || "—"}</td>
                                                             <td className="px-5 py-3.5 text-gray-300 font-mono text-xs whitespace-nowrap">{row.total || "—"}</td>
                                                             {/* <td className="px-5 py-3.5 text-gray-300 font-mono text-xs whitespace-nowrap">{row.validation_errors || "—"}</td> */}
-                                                            <td className="px-5 py-3.5 text-gray-300 font-mono text-xs whitespace-nowrap">
-                                                                <button
-                                                                    className="flex items-center gap-1.5 text-xs text-purple-600 hover:text-purple-400 transition-colors">
+                                                            <td className="px-5 py-3.5 whitespace-nowrap">
+                                                                {row.validation_errors ? (
+                                                                    <button
+                                                                        onClick={() => setErrorPopup({ rowId: row.id, errors: row.validation_errors })}
+                                                                        className="text-xs text-purple-400 hover:text-purple-300 transition-colors underline underline-offset-2"
+                                                                    >
                                                                         view error
-                                                                </button>
+                                                                    </button>
+                                                                ) : (
+                                                                    <span className="text-gray-600 text-xs">—</span>
+                                                                )}
                                                             </td>
                                                             <td className="px-5 py-3.5 whitespace-nowrap">
                                                                 <div className="flex gap-4">
@@ -958,7 +967,7 @@ function ReviewPage() {
 
 
                         {/* this is ai suggetion table - only display when click auto complete */}
-                        {/* ── Warning Suggestions Table ── */}
+                        {/* Warning Suggestions Table*/}
                         {activeCard === "warning" && showSuggestions && warningSuggestions.length > 0 && (
                             <div className="mt-6">
                                 <div className="flex items-center gap-2.5 mb-3">
@@ -1138,6 +1147,9 @@ function ReviewPage() {
                         </div>
                     )}
 
+
+                    {/* using Claude AI style the  popup box*/}
+
                     {/* ── Delete All Confirmation Modal (for critical rows) ── */}
                     {deleteAllConfirm && (
                         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm">
@@ -1169,7 +1181,7 @@ function ReviewPage() {
                         </div>
                     )}
 
-                    {/* ── Confirm All Warnings Modal ── */}
+                    {/*  Confirm All Warnings Modal  */}
                     {confirmAllWarningConfirm && (
                         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm">
                             <div className="bg-gray-900 border border-gray-700 rounded-2xl p-6 w-full max-w-sm shadow-2xl">
@@ -1200,7 +1212,7 @@ function ReviewPage() {
                         </div>
                     )}
 
-                    {/* ── Confirm All Info Modal ── */}
+                    {/* Confirm All Info Modal */}
                     {confirmAllInfoConfirm && (
                         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm">
                             <div className="bg-gray-900 border border-gray-700 rounded-2xl p-6 w-full max-w-sm shadow-2xl">
@@ -1229,7 +1241,44 @@ function ReviewPage() {
                                 </div>
                             </div>
                         </div>
-                    )}        
+                    )}  
+
+                    {errorPopup && (
+                        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm">
+                            <div className="bg-gray-900 border border-gray-700 rounded-2xl p-6 w-full max-w-md shadow-2xl">
+                                <h3 className="text-white text-base font-semibold mb-4">Validation Errors</h3>
+                                <div className="space-y-2 max-h-64 overflow-y-auto">
+                                    {(typeof errorPopup.errors === "string"
+                                        ? JSON.parse(errorPopup.errors)
+                                        : errorPopup.errors
+                                    ).map((code, i) => {
+                                        const level = {
+                                            critical: ["invalid_quantity","invalid_price","missing_product","unresolvable_row","invalid_date"],
+                                            warning:  ["missing_date","month_date_mismatch","year_date_mismatch","date_period_outlier",
+                                                    "price_outlier","quantity_outlier","missing_quantity","missing_price",
+                                                    "duplicate_row","missing_category"],
+                                        };
+                                        const color = level.critical.includes(code)
+                                            ? "border-red-500/40 bg-red-500/10 text-red-400"
+                                            : level.warning.includes(code)
+                                            ? "border-yellow-500/40 bg-yellow-500/10 text-yellow-400"
+                                            : "border-blue-500/40 bg-blue-500/10 text-blue-400";
+                                        return (
+                                            <div key={i} className={`flex items-start gap-3 px-3 py-2 rounded-lg border ${color}`}>
+                                                <span className="font-mono text-xs font-medium mt-0.5">{code.trim()}</span>
+                                            </div>
+                                        );
+                                    })}
+                                </div>
+                                <button
+                                    onClick={() => setErrorPopup(null)}
+                                    className="mt-5 w-full px-4 py-2 rounded-lg text-sm font-medium bg-gray-800 hover:bg-gray-700 text-gray-300 border border-gray-700 transition-colors"
+                                >
+                                    Close
+                                </button>
+                            </div>
+                        </div>
+                    )}      
                 </div>
             </div>    
             
