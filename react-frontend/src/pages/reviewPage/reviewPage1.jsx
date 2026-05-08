@@ -71,6 +71,8 @@ function ReviewPage() {
         warning: [],
         info: []
     });
+    const [error, setError] = useState(null);
+    const [loading, setLoading] = useState(true);
 
     useEffect(() => {
         const fetchData = async () => {
@@ -91,6 +93,10 @@ function ReviewPage() {
 
             } catch (err) {
                 console.error("API Error:", err);
+                setError(err.response?.data?.message || "Failed to load data");
+            }
+            finally {
+                setLoading(false);
             }
         };
 
@@ -476,6 +482,18 @@ function ReviewPage() {
             setConfirmAllInfoConfirm(false);
         }
     };
+
+    if (loading) return (
+        <div className="flex items-center justify-center h-64">
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+        </div>
+    );
+
+    if (error) return (
+        <div className="bg-red-50 border border-red-200 rounded-xl p-4 text-red-700 text-sm">
+            Error: {error}
+        </div>
+    );
 
     return (
         <div className="min-h-screen bg-slate-950 text-white overflow-hidden">
